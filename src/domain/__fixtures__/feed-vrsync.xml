@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Test fixture in the VRSync format. Fictitious listings, used only by unit tests. -->
+<ListingDataFeed xmlns="http://www.vivareal.com/schemas/1.0/VRSync" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Header>
+    <Provider>Imobiliária Exemplo de Teste</Provider>
+    <Email>contato@example.com</Email>
+    <ContactName>Fulano</ContactName>
+  </Header>
+  <Listings>
+    <Listing>
+      <ListingID>AP-101</ListingID>
+      <Title><![CDATA[Apartamento 3 quartos com suíte e varanda gourmet]]></Title>
+      <TransactionType>For Rent</TransactionType>
+      <DetailViewUrl>https://example.com/imovel/AP-101</DetailViewUrl>
+      <Media>
+        <Item medium="image" caption="sala">https://example.com/fotos/ap101-2.jpg</Item>
+        <Item medium="image" caption="fachada" primary="true">https://example.com/fotos/ap101-1.jpg</Item>
+        <Item medium="video">https://example.com/video.mp4</Item>
+      </Media>
+      <Details>
+        <UsageType>Residential</UsageType>
+        <PropertyType>Residential / Apartment</PropertyType>
+        <Description><![CDATA[Prédio com elevador, portaria 24 horas e piscina. Aceita pet. Não é mobiliado.]]></Description>
+        <RentalPrice currency="BRL" period="Monthly">3500</RentalPrice>
+        <PropertyAdministrationFee currency="BRL">780,50</PropertyAdministrationFee>
+        <Iptu currency="BRL" period="Yearly">2400</Iptu>
+        <LivingArea unit="square metres">92</LivingArea>
+        <Bedrooms>3</Bedrooms>
+        <Bathrooms>2</Bathrooms>
+        <Suites>1</Suites>
+        <Garage type="Parking Space">2</Garage>
+        <Features>
+          <Feature>Barbecue</Feature>
+          <Feature>Gym</Feature>
+        </Features>
+      </Details>
+      <Location displayAddress="All">
+        <Country abbreviation="BR">Brasil</Country>
+        <State abbreviation="MG">Minas Gerais</State>
+        <City>Belo Horizonte</City>
+        <Neighborhood>SAVASSI</Neighborhood>
+        <Address>Rua Pernambuco</Address>
+        <StreetNumber>1000</StreetNumber>
+        <PostalCode>30130-151</PostalCode>
+        <Latitude>-19.9367</Latitude>
+        <Longitude>-43.9339</Longitude>
+      </Location>
+      <ContactInfo>
+        <Name>Imobiliária Exemplo de Teste</Name>
+        <Email>corretor@example.com</Email>
+        <Telephone>31 99999-0000</Telephone>
+      </ContactInfo>
+    </Listing>
+    <Listing>
+      <ListingID>CA-7</ListingID>
+      <Title>Casa em condomínio fechado</Title>
+      <TransactionType>Sale/Rent</TransactionType>
+      <Details>
+        <PropertyType>Residential / Condo</PropertyType>
+        <ListPrice currency="BRL">900000</ListPrice>
+        <RentalPrice currency="BRL">4.200,00</RentalPrice>
+        <YearlyTax currency="BRL">3600</YearlyTax>
+        <LivingArea unit="square metres">180</LivingArea>
+        <Bedrooms>4</Bedrooms>
+      </Details>
+      <Location displayAddress="Neighborhood">
+        <City>Belo Horizonte</City>
+        <Neighborhood>Bandeirantes</Neighborhood>
+        <Address>Rua Escondida</Address>
+        <StreetNumber>55</StreetNumber>
+      </Location>
+    </Listing>
+    <Listing>
+      <ListingID>V-1</ListingID>
+      <TransactionType>For Sale</TransactionType>
+      <Details><ListPrice>500000</ListPrice></Details>
+      <Location><City>Belo Horizonte</City></Location>
+    </Listing>
+    <Listing>
+      <ListingID>CT-1</ListingID>
+      <TransactionType>For Rent</TransactionType>
+      <Details><RentalPrice>2000</RentalPrice></Details>
+      <Location><City>Contagem</City></Location>
+    </Listing>
+    <Listing>
+      <TransactionType>For Rent</TransactionType>
+    </Listing>
+  </Listings>
+</ListingDataFeed>

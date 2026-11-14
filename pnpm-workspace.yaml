@@ -1,0 +1,6 @@
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver
+overrides:
+  # @vercel/oidc pins zod 4.1.11 (GHSA, memory exhaustion); same major, patched.
+  zod: 4.6.7

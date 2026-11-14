@@ -1,0 +1,46 @@
+# Daily collection: 06:00 and 18:00 in America/Sao_Paulo (UTC-3, no daylight saving since 2019).
+# Each call to /api/cron/collect advances the run for ~50 s; the job calls again while "more"
+# is true, so long runs fit Vercel's function limit. Vercel Cron (vercel.json) is the backup.
+name: Coleta diária
+
+on:
+  schedule:
+    - cron: "0 9 * * *"
+    - cron: "0 21 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: coleta
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  coleta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Run collection
+        env:
+          RADAR_URL: ${{ vars.RADAR_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${RADAR_URL:-}" ]; then
+            echo "::error::Defina a variável RADAR_URL (Settings → Secrets and variables → Actions → Variables) com o endereço do app, ex.: https://seu-radar.vercel.app"
+            exit 1
+          fi
+          auth=()
+          if [ -n "${CRON_SECRET:-}" ]; then auth=(-H "Authorization: Bearer ${CRON_SECRET}"); fi
+          for i in $(seq 1 25); do
+            body=$(curl -sS --fail-with-body --retry 3 --retry-delay 10 --max-time 90 -X POST "${auth[@]}" -H "x-radar-trigger: github" "${RADAR_URL%/}/api/cron/collect") || { echo "::error::Falha ao chamar o app: $body"; exit 1; }
+            echo "Etapa $i: $body"
+            echo "$body" | grep -q '"app":"radar-alugueis"' || { echo "::error::A resposta não veio do Radar Aluguéis BH. Confira RADAR_URL."; exit 1; }
+            if echo "$body" | grep -q '"more":false'; then
+              echo "Coleta concluída."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::warning::A coleta não terminou em 25 etapas; ela continua na próxima chamada."

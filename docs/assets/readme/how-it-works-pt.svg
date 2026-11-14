@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 560" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#e6effd"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10z" fill="#94a3b8"/></marker>
+  </defs>
+  <rect width="1600" height="560" rx="24" fill="url(#bg)"/>
+  <text x="60" y="64" font-size="28" font-weight="800" fill="#111827">Como o Radar trabalha</text>
+  <text x="60" y="96" font-size="17" fill="#64748b">Todo dia às 06h e às 18h (horário de Brasília), sem você abrir nada.</text>
+  <g font-size="15">
+    <g transform="translate(60 140)">
+      <rect width="300" height="330" rx="18" fill="#fff" stroke="#dbe3ef"/>
+      <text x="22" y="38" font-size="13" font-weight="700" fill="#2563eb">1 · FONTES AUTORIZADAS</text>
+      <text x="22" y="74" font-weight="600" fill="#111827">Feed XML de imobiliárias</text><text x="22" y="96" fill="#64748b">formato VRSync, com autorização</text>
+      <text x="22" y="132" font-weight="600" fill="#111827">Planilha CSV e cadastro manual</text><text x="22" y="154" fill="#64748b">o que você encontrar em qualquer site</text>
+      <text x="22" y="190" font-weight="600" fill="#111827">Portais sem permissão</text><text x="22" y="212" fill="#64748b">ficam pendentes, com o motivo:</text><text x="22" y="234" fill="#64748b">nada de raspar contra os termos</text>
+      <rect x="22" y="262" width="256" height="44" rx="10" fill="#eff6ff"/><text x="150" y="290" text-anchor="middle" font-size="14" fill="#1d4ed8">Falhou? Tenta 3×, registra e avisa</text>
+    </g>
+    <g transform="translate(420 140)">
+      <rect width="330" height="330" rx="18" fill="#fff" stroke="#dbe3ef"/>
+      <text x="22" y="38" font-size="13" font-weight="700" fill="#2563eb">2 · CONSOLIDA</text>
+      <text x="22" y="74" font-weight="600" fill="#111827">Padroniza R$, m², tipos e 18 itens</text>
+      <text x="22" y="108" font-weight="600" fill="#111827">Agrupa o mesmo imóvel</text><text x="22" y="130" fill="#64748b">endereço, área, quartos, preço, texto</text>
+      <text x="22" y="164" font-weight="600" fill="#111827">Guarda o histórico de preços</text><text x="22" y="186" fill="#64748b">e detecta reduções</text>
+      <text x="22" y="220" font-weight="600" fill="#111827">Sumiu do anúncio?</text><text x="22" y="242" fill="#64748b">possivelmente indisponível → indisponível</text>
+      <rect x="22" y="262" width="286" height="44" rx="10" fill="#eff6ff"/><text x="165" y="290" text-anchor="middle" font-size="14" fill="#1d4ed8">Custo real = aluguel + cond. + IPTU/12</text>
+    </g>
+    <g transform="translate(810 140)">
+      <rect width="330" height="330" rx="18" fill="#fff" stroke="#dbe3ef"/>
+      <text x="22" y="38" font-size="13" font-weight="700" fill="#2563eb">3 · ANALISA A LOCALIZAÇÃO</text>
+      <text x="22" y="74" font-weight="600" fill="#111827">Inundação, deslizamento, enxurrada</text><text x="22" y="96" fill="#64748b">cartas oficiais do SGB/IPT</text>
+      <text x="22" y="130" font-weight="600" fill="#111827">Córregos, avenidas, ferrovia, aeroporto</text><text x="22" y="152" fill="#64748b">OpenStreetMap, com distâncias</text>
+      <text x="22" y="186" font-weight="600" fill="#111827">Metrô, hospitais, mercados, parques</text>
+      <text x="22" y="220" font-weight="600" fill="#111827">Declividade do terreno</text><text x="22" y="242" fill="#64748b">relevo SRTM (~30 m)</text>
+      <rect x="22" y="262" width="286" height="44" rx="10" fill="#fff7ed"/><text x="165" y="290" text-anchor="middle" font-size="14" fill="#c2410c">Índice de risco 0–100, com fontes</text>
+    </g>
+    <g transform="translate(1200 140)">
+      <rect width="340" height="330" rx="18" fill="#2563eb"/>
+      <text x="22" y="38" font-size="13" font-weight="700" fill="#bfdbfe">4 · ENTREGA</text>
+      <text x="22" y="74" font-weight="600" fill="#fff">Busca com 30+ filtros</text>
+      <text x="22" y="106" font-weight="600" fill="#fff">Mapa com camadas de risco</text>
+      <text x="22" y="138" font-weight="600" fill="#fff">Oportunidades e custo por m²</text>
+      <text x="22" y="170" font-weight="600" fill="#fff">Comparador e análise de bairros</text>
+      <text x="22" y="202" font-weight="600" fill="#fff">Favoritos e buscas salvas</text>
+      <text x="22" y="242" fill="#dbeafe">Avisos no app, por e-mail</text><text x="22" y="264" fill="#dbeafe">e pelo Telegram</text>
+      <circle cx="300" cy="290" r="10" fill="#fff" fill-opacity=".9"><animate attributeName="r" values="8;14;8" dur="2s" repeatCount="indefinite"/><animate attributeName="fill-opacity" values=".9;.3;.9" dur="2s" repeatCount="indefinite"/></circle>
+    </g>
+  </g>
+  <g stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arrow)" fill="none">
+    <path d="M364 305 H 414"/><path d="M754 305 H 804"/><path d="M1144 305 H 1194"/>
+  </g>
+  <circle r="5" fill="#2563eb"><animateMotion dur="3s" repeatCount="indefinite" path="M364 305 H 414 M754 305 H 804 M1144 305 H 1194"/></circle>
+  <text x="60" y="516" font-size="14" fill="#64748b">GitHub Actions chama o app (Vercel); cada chamada avança a coleta por ~50 s e continua de onde parou. Banco: Postgres + PostGIS (Neon).</text>
+</svg>
