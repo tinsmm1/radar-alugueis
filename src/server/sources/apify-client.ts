@@ -53,9 +53,18 @@ async function call(url: string, opts: { method?: "GET" | "POST"; notFound?: "nu
 type Obj = Record<string, unknown>;
 const data = (v: unknown): Obj => (v && typeof v === "object" && "data" in v && v.data && typeof v.data === "object" ? (v.data as Obj) : {});
 
-/** Items of the last successful run of the task ([] when it has never succeeded). */
+/** Run states whose dataset is final (a run stopped by its cost cap is ABORTED but its items are valid). */
+const FINISHED = new Set(["SUCCEEDED", "ABORTED", "TIMED-OUT"]);
+
+/** Items of the last finished run of the task ([] when there is none yet). */
 export async function fetchApifyItems(task: string): Promise<unknown[]> {
-  const items = await call(`${taskPath(task)}/runs/last/dataset/items?status=SUCCEEDED&clean=true&format=json&limit=${MAX_ITEMS_READ}`, { notFound: "null" });
+  const run = data(await call(`${taskPath(task)}/runs/last`, { notFound: "null" }));
+  const datasetId = typeof run.defaultDatasetId === "string" ? run.defaultDatasetId : null;
+  if (!datasetId || !FINISHED.has(String(run.status))) {
+    const items = await call(`${taskPath(task)}/runs/last/dataset/items?status=SUCCEEDED&clean=true&format=json&limit=${MAX_ITEMS_READ}`, { notFound: "null" });
+    return Array.isArray(items) ? items : [];
+  }
+  const items = await call(`${API}/datasets/${encodeURIComponent(datasetId)}/items?clean=true&format=json&limit=${MAX_ITEMS_READ}`, { notFound: "null" });
   return Array.isArray(items) ? items : [];
 }
 
