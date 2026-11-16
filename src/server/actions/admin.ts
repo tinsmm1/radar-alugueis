@@ -1,6 +1,6 @@
 "use server";
 import { logger } from "@/lib/logger";
-import { and, eq, isNotNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { properties, sourceRuns, sources } from "@/db/schema";
@@ -96,7 +96,7 @@ export async function setFeedStatus(id: number, status: "ativa" | "pausada") {
   return runAction("setFeedStatus", async () => {
     const st = parse(z.enum(["ativa", "pausada"]), status);
     const db = getDb();
-    const rows = await db.update(sources).set({ status: st }).where(and(eq(sources.id, parse(sourceId, id)), eq(sources.adapter, "vrsync"))).returning({ id: sources.id });
+    const rows = await db.update(sources).set({ status: st }).where(and(eq(sources.id, parse(sourceId, id)), inArray(sources.adapter, ["vrsync", "apify"]))).returning({ id: sources.id });
     if (!rows.length) throw new ActionError("Só feeds podem ser pausados.");
   }, "/admin");
 }
@@ -107,7 +107,7 @@ export async function deleteFeed(id: number) {
     const sid = parse(sourceId, id);
     const db = getDb();
     const [s] = await db.select().from(sources).where(eq(sources.id, sid)).limit(1);
-    if (!s || s.adapter !== "vrsync") throw new ActionError("Só feeds cadastrados podem ser removidos.");
+    if (!s || !["vrsync", "apify"].includes(s.adapter)) throw new ActionError("Só feeds cadastrados podem ser removidos.");
     await refreshProperties(await purgeSource(sid));
     await db.delete(sources).where(eq(sources.id, sid));
   }, "/admin");

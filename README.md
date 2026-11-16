@@ -337,7 +337,7 @@ Antes de `pnpm db:migrate`, defina em `.env.local`: `DATABASE_URL=postgres://pos
 
 ## 12 / Limites conhecidos
 
-- Os portais não oferecem integração autorizada: os anúncios reais entram por feed de imobiliária, planilha ou cadastro manual.
+- Os portais não oferecem integração autorizada. Os anúncios reais entram por feed de imobiliária, planilha, cadastro manual ou, por opção do dono, por robôs do Apify no plano grátis (veja [docs/fontes.md](docs/fontes.md)).
 - As camadas de risco da Prefeitura de BH precisam ser importadas à mão (os servidores da PBH recusam acesso automático).
 - Não há dados oficiais abertos de segurança pública por bairro. O app não classifica bairros como seguros ou perigosos.
 - A suscetibilidade do SGB é de 2014, em escala municipal: mostra a predisposição do terreno, não o estado de um imóvel.

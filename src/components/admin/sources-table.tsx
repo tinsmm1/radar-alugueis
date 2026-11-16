@@ -34,7 +34,7 @@ export function SourcesTable({ rows }: { rows: SourceView[] }) {
                 <p className="font-medium">{s.name}</p>
                 <p className="text-xs text-muted-foreground">{s.adapterLabel}</p>
                 {s.isDemo && <Pill tone="demo" className="mt-1">Fictícia</Pill>}
-                {s.url && s.adapter === "vrsync" && <p className="max-w-[260px] truncate text-xs text-muted-foreground" title={s.url}>{s.url}</p>}
+                {s.url && (s.adapter === "vrsync" || s.adapter === "apify") && <p className="max-w-[260px] truncate text-xs text-muted-foreground" title={s.url}>{s.url}</p>}
                 {s.authorization && <p className="max-w-[260px] text-xs text-muted-foreground">Autorização: {s.authorization}</p>}
               </td>
               <td>
@@ -55,7 +55,7 @@ export function SourcesTable({ rows }: { rows: SourceView[] }) {
               <td className="whitespace-nowrap">{r ? `${r.priceChanges} · ${r.duplicates} · ${r.missing}` : "—"}</td>
               <td className="whitespace-nowrap">{formatDuration(r?.durationMs)}</td>
               <td>
-                {s.adapter === "vrsync" ? (
+                {s.adapter === "vrsync" || s.adapter === "apify" ? (
                   <div className="flex justify-end gap-1.5">
                     {s.status === "pausada" ? (
                       <ActionButton action={setFeedStatus.bind(null, s.id, "ativa")} success="Fonte reativada.">Reativar</ActionButton>

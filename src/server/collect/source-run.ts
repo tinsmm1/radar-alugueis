@@ -38,7 +38,7 @@ export async function collectSource(source: SourceRow, runId: number | null): Pr
       const collected = await adapter.collect(source);
       const s = await storeListings(source, collected.listings, collected.raws, { fullSnapshot: collected.fullSnapshot });
       const status = s.partial ? "partial" : "ok";
-      await db.insert(sourceRuns).values({ runId, sourceId: source.id, status, attempt, fetched: s.fetched, created: s.created, updated: s.updated, priceChanges: s.priceChanges, duplicates: s.duplicates, missing: s.missing, skipped: Object.values(collected.skipped).reduce((a, b) => a + b, 0), durationMs: Date.now() - started, error: s.partial ? "Feed com menos da metade dos anúncios: ausências não foram marcadas." : null });
+      await db.insert(sourceRuns).values({ runId, sourceId: source.id, status, attempt, fetched: s.fetched, created: s.created, updated: s.updated, priceChanges: s.priceChanges, duplicates: s.duplicates, missing: s.missing, skipped: Object.values(collected.skipped).reduce((a, b) => a + b, 0), durationMs: Date.now() - started, error: s.partial ? "Feed com menos da metade dos anúncios: ausências não foram marcadas." : (collected.note ?? null) });
       return { status };
     } catch (err) {
       if (err instanceof SkipSource) {

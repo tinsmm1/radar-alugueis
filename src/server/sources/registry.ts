@@ -1,4 +1,6 @@
 import "server-only";
+import { parseApifyItems } from "@/domain/apify";
+import { ApifySkip, fetchApifyItems, startDailyApifyRun } from "./apify-client";
 import { parseVrsync } from "@/domain/vrsync";
 import type { NormalizedListing } from "@/domain/listing";
 import { getDb } from "@/db";
@@ -15,6 +17,8 @@ export type Collected = {
   skipped: Record<string, number>;
   /** True when the source sends its whole catalogue (missing listings may be unavailable). */
   fullSnapshot: boolean;
+  /** Informational note shown with the run (e.g. the automatic Apify caps). */
+  note?: string;
 };
 
 /** The source cannot run (pending integration, missing configuration): not a failure. */
@@ -28,7 +32,6 @@ export type Adapter = {
 };
 
 const FEED_MAX_BYTES = 25 * 1024 * 1024;
-
 export const ADAPTERS: Record<string, Adapter> = {
   vrsync: {
     scheduled: true,
@@ -41,6 +44,25 @@ export const ADAPTERS: Record<string, Adapter> = {
       const parsed = parseVrsync(decodeText(res.body, res.contentType));
       if (!parsed.ok) throw new Error(parsed.error);
       return { listings: parsed.listings, raws: parsed.raws, skipped: parsed.skipped, fullSnapshot: true };
+    },
+  },
+  apify: {
+    scheduled: true,
+    label: "Portal via Apify (coleta automática)",
+    async collect(source) {
+      if (!source.url) throw new SkipSource("Fonte do Apify sem tarefa configurada.");
+      let items: unknown[];
+      try {
+        items = await fetchApifyItems(source.url);
+      } catch (err) {
+        if (err instanceof ApifySkip) throw new SkipSource(err.message);
+        throw err;
+      }
+      const parsed = parseApifyItems(items);
+      // Then today's run (caps worked out from the remaining free credit); read at the next collection.
+      const note = await startDailyApifyRun(source.url);
+      // Capped runs bring only the newest N results: a listing missing from one run is not unavailable.
+      return { ...parsed, fullSnapshot: false, note };
     },
   },
   planilha: { scheduled: false, label: "Planilha CSV enviada pelo dono" },
@@ -69,7 +91,7 @@ export async function ensureSources(): Promise<void> {
 }
 
 /** "Imobiliária Exemplo" → "feed-imobiliaria-exemplo". */
-export function feedKey(name: string): string {
+export function feedKey(name: string, prefix = "feed"): string {
   const slug = name
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -77,5 +99,5 @@ export function feedKey(name: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 40);
-  return `feed-${slug || "sem-nome"}`;
+  return `${prefix}-${slug || "sem-nome"}`;
 }
