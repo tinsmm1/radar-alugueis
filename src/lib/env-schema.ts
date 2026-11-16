@@ -30,7 +30,7 @@ export const optionalEnvSchema = {
   /** Contact e-mail sent to Nominatim in the User-Agent (their usage policy asks for one). */
   GEOCODER_CONTACT: z.email(),
   /** Apify API token: reads the datasets of the owner's portal scraper tasks (opt-in, see docs/fontes.md). */
-  APIFY_TOKEN: z.string().regex(/^apify_api_[\w-]{20,}$/),
+  APIFY_TOKEN: z.string().trim().regex(/^apify_api_\S{20,}$/),
 } as const;
 export type OptionalEnvKey = keyof typeof optionalEnvSchema;
 
