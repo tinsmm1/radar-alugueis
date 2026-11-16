@@ -86,6 +86,7 @@ Depois, em **Administração → Notificações**, informe o destino e use **Env
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Telegram |
 | `APP_URL` | Endereço público para os links das notificações |
 | `GEOCODER_CONTACT` | Seu e-mail no User-Agent do Nominatim (a política de uso pede um contato) |
+| `APIFY_TOKEN` | Token do Apify para ler as tarefas dos portais (opcional; veja `docs/fontes.md`) |
 | `LOG_LEVEL` | `info` (padrão), `debug`… |
 
 Uma variável com valor inválido é ignorada e aparece num aviso em **Administração**.
