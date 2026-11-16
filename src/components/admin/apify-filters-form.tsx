@@ -15,14 +15,17 @@ const toNum = (v: string): number | null => {
   return v.trim() && Number.isFinite(n) && n > 0 ? n : null;
 };
 
+/** 200000 → "200.000" while typing. */
+const fmt = (v: number | null) => (v == null ? "" : v.toLocaleString("pt-BR"));
+
 function PriceRange({ id, label, min, max, onChange }: { id: string; label: string; min: number | null; max: number | null; onChange: (min: number | null, max: number | null) => void }) {
   return (
     <div className="space-y-1.5">
       <Label htmlFor={`${id}-min`}>{label} (R$)</Label>
       <div className="flex items-center gap-2">
-        <Input id={`${id}-min`} inputMode="numeric" placeholder="mínimo" value={min ?? ""} onChange={(e) => onChange(toNum(e.target.value), max)} />
+        <Input id={`${id}-min`} inputMode="numeric" placeholder="mínimo" value={fmt(min)} onChange={(e) => onChange(toNum(e.target.value), max)} />
         <span className="text-muted-foreground text-sm">a</span>
-        <Input id={`${id}-max`} inputMode="numeric" placeholder="máximo" aria-label={`${label} máximo`} value={max ?? ""} onChange={(e) => onChange(min, toNum(e.target.value))} />
+        <Input id={`${id}-max`} inputMode="numeric" placeholder="máximo" aria-label={`${label} máximo`} value={fmt(max)} onChange={(e) => onChange(min, toNum(e.target.value))} />
       </div>
     </div>
   );
