@@ -8,6 +8,8 @@ export const settings = pgTable("settings", {
   notifyEmail: text("notify_email"),
   telegramChatId: text("telegram_chat_id"),
   notificationsSeenAt: timestamp("notifications_seen_at", { withTimezone: true }),
+  /** Filters sent to the Apify robots and checked on import (see src/domain/collect-filters.ts). */
+  collectFilters: jsonb("collect_filters"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

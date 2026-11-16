@@ -94,3 +94,12 @@ Um mesmo imóvel anunciado para alugar numa fonte e à venda em outra é agrupad
 | Declividade | Terrain Tiles (AWS Open Data; SRTM) | Tiles públicos | Integrada, por imóvel |
 | Áreas de risco geológico (Urbel), carta de inundações, pontos críticos de alagamento (Defesa Civil) | Prefeitura de Belo Horizonte | Os servidores da PBH (dados.pbh.gov.br, BHMap) recusam acesso de servidores (403) | **Importação manual de GeoJSON** em Administração → Camadas |
 | Ocorrências de segurança pública por bairro | Sem base oficial aberta nessa granularidade acessível | — | **Não exibida.** O app não classifica bairros como seguros ou perigosos |
+
+## Filtros da coleta automática (Apify)
+
+Em **Administração → Fontes → Filtros da coleta automática** o dono escolhe tipo (apartamentos, casas ou os dois), faixa de aluguel, faixa de preço de venda, quartos mínimos e regionais. O padrão é coletar todos os apartamentos e casas de BH.
+
+- **Tipo, preço e quartos** seguem junto com cada execução do robô (campos `unitTypes`, `minPrice`, `maxPrice`, `minBedrooms`), então o Apify só cobra pelos anúncios que passam no filtro.
+- **Regional** é conferida na importação, pelo bairro do anúncio: o robô busca a cidade toda e o Radar descarta as outras regionais.
+- Os mesmos filtros são conferidos de novo na importação. Valor desconhecido nunca exclui um anúncio.
+- **Imóveis comerciais** (salas, conjuntos, lojas, galpões, terrenos, sítios) nunca entram: são descartados como "não residencial".

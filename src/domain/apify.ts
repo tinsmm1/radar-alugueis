@@ -1,6 +1,6 @@
 import { detectFeatures, EMPTY_LISTING, inScope, normalizeType, normalizedListingSchema, withImpliedFeatures, type Mode, type NormalizedListing } from "./listing";
 import { parseArea, parseCount, parseMoney } from "./money";
-import { titleCase } from "./text";
+import { normalizeText, titleCase } from "./text";
 
 /**
  * Apify datasets: the items produced by scrapers of ZAP, Viva Real, OLX, QuintoAndar, Imovelweb, Loft…
@@ -84,6 +84,16 @@ function modeOf(v: unknown): Mode | null {
   return null;
 }
 
+const COMMERCIAL_UNIT = /COMMERCIAL|OFFICE|BUSINESS|SHED|DEPOSIT|WAREHOUSE|LAND|ALLOTMENT|FARM|RANCH|BUILDING|STORE|HOTEL|PARKING/;
+const COMMERCIAL_TEXT = /\b(sala comercial|salas comerciais|conjunto comercial|ponto comercial|loja|galpao|deposito|armazem|terreno|lote|predio comercial|escritorio|consultorio|andar corrido)\b/;
+
+/** Commercial property, land and farms are out of scope (only apartments and houses). */
+export function isCommercial(usage: string | null, typeHint: string | null, title: string | null): boolean {
+  if (usage && /COMMERCIAL/i.test(usage)) return true;
+  if (typeHint && COMMERCIAL_UNIT.test(typeHint.toUpperCase())) return true;
+  return !!title && COMMERCIAL_TEXT.test(normalizeText(title)) && !/\b(apartamento|apto|casa|cobertura)\b/.test(normalizeText(title));
+}
+
 export function mapApifyItem(item: Obj, fallbackMode: Mode | null): NormalizedListing | { skip: string } {
   const externalId = str(p(item, "id", "listingId", "externalId", "code", "codigo", "legacyId", "listId"), 200) ?? linkOf(item);
   if (!externalId) return { skip: "sem identificador" };
@@ -132,6 +142,8 @@ export function mapApifyItem(item: Obj, fallbackMode: Mode | null): NormalizedLi
   const title = str(p(item, "title", "titulo", "name"));
   const description = str(p(item, "description", "descricao", "desc"), 20_000);
   const typeHint = str(p(item, "unitTypes", "propertyType", "type", "tipo", "unitType", "category"));
+  const usage = str(p(item, "usageType", "usage", "finalidadeUso"));
+  if (isCommercial(usage, typeHint, title)) return { skip: "não residencial" };
   const amenities = p(item, "amenities", "features", "caracteristicas");
   const amenityText = Array.isArray(amenities) ? amenities.map(String).join(" ").replace(/_/g, " ") : str(amenities, 2000);
   const allAmenities = [isObj(item.listing) ? item.listing.amenities : undefined, item.amenities, item.features].flatMap((a) => (Array.isArray(a) ? a.map(String) : [])).join(" ").replace(/_/g, " ");

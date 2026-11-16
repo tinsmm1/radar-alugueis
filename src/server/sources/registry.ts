@@ -1,6 +1,8 @@
 import "server-only";
 import { parseApifyItems } from "@/domain/apify";
 import { ApifySkip, fetchApifyItems, startDailyApifyRun } from "./apify-client";
+import { keepListing } from "@/domain/collect-filters";
+import { bairroRegionals, getCollectFilters } from "../collect-filters";
 import { parseVrsync } from "@/domain/vrsync";
 import type { NormalizedListing } from "@/domain/listing";
 import { getDb } from "@/db";
@@ -59,6 +61,12 @@ export const ADAPTERS: Record<string, Adapter> = {
         throw err;
       }
       const parsed = parseApifyItems(items);
+      // Same filters again on import (the regional only exists here: the robot cannot filter by it).
+      const [filters, regionalOf] = await Promise.all([getCollectFilters(), bairroRegionals()]);
+      const kept = parsed.listings.filter((l) => keepListing(l, filters, regionalOf));
+      const dropped = parsed.listings.length - kept.length;
+      if (dropped) parsed.skipped["fora dos filtros"] = (parsed.skipped["fora dos filtros"] ?? 0) + dropped;
+      parsed.listings = kept;
       // Then today's run (caps worked out from the remaining free credit); read at the next collection.
       const note = await startDailyApifyRun(source.url);
       // Capped runs bring only the newest N results: a listing missing from one run is not unavailable.

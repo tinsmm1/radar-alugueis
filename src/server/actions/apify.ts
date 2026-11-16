@@ -4,9 +4,11 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { sources } from "@/db/schema";
 import { apifyTaskId, parseApifyItems } from "@/domain/apify";
+import { collectFiltersSchema, DEFAULT_COLLECT_FILTERS, describeFilters, isDefaultFilters } from "@/domain/collect-filters";
 import { optionalEnv } from "@/lib/env";
 import { ApifySkip, fetchApifyItems, planApifyRun, startDailyApifyRun } from "../sources/apify-client";
 import { feedKey } from "../sources/registry";
+import { saveCollectFilters } from "../collect-filters";
 import { ActionError, parse, runAction } from "./run-action";
 
 const taskSchema = z.string().trim().min(3, "Informe a tarefa do Apify.").max(300).refine((t) => apifyTaskId(t) != null, "Tarefa inválida: use o ID (ex.: usuario~zap-bh) ou o link da tarefa.");
@@ -55,5 +57,16 @@ export async function addApifySource(input: z.input<typeof apifySchema>) {
     // First run right away (with the automatic caps), so the next collection already has listings.
     const note = optionalEnv("APIFY_TOKEN") ? await startDailyApifyRun(task) : null;
     return { key, note };
+  }, "/admin");
+}
+
+/** Saves the collection filters (null = back to the default: everything). Used from the next robot run. */
+export async function saveApifyFilters(input: z.input<typeof collectFiltersSchema> | null) {
+  return runAction("saveApifyFilters", async () => {
+    const f = input == null ? null : parse(collectFiltersSchema, input);
+    if (f && f.aluguelMin != null && f.aluguelMax != null && f.aluguelMax > 0 && f.aluguelMin > f.aluguelMax) throw new ActionError("O aluguel mínimo é maior que o máximo.");
+    if (f && f.vendaMin != null && f.vendaMax != null && f.vendaMax > 0 && f.vendaMin > f.vendaMax) throw new ActionError("O preço de venda mínimo é maior que o máximo.");
+    await saveCollectFilters(f && !isDefaultFilters(f) ? f : null);
+    return { summary: describeFilters(f ?? DEFAULT_COLLECT_FILTERS) };
   }, "/admin");
 }

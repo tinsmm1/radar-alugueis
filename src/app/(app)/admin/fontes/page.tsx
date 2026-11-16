@@ -1,4 +1,7 @@
+import { ApifyFiltersForm } from "@/components/admin/apify-filters-form";
 import { ApifyForm } from "@/components/admin/apify-form";
+import { describeFilters } from "@/domain/collect-filters";
+import { getCollectFilters } from "@/server/collect-filters";
 import { FeedForm } from "@/components/admin/feed-form";
 import { envState } from "@/lib/env";
 import { PortalList, SourcesTable } from "@/components/admin/sources-table";
@@ -12,7 +15,7 @@ export const dynamic = "force-dynamic";
 export default async function SourcesPage() {
   // Each page verifies the session itself (defence in depth: the layout check alone can be skipped by partial renders).
   await requireAuth();
-  const all = await sourcesOverview();
+  const [all, filters] = await Promise.all([sourcesOverview(), getCollectFilters()]);
   const collected = all.filter((s) => s.adapter !== "portal");
   const portals = all.filter((s) => s.adapter === "portal");
   return (
@@ -34,6 +37,12 @@ export default async function SourcesPage() {
         description="Robôs prontos do Apify leem ZAP, Viva Real, OLX, QuintoAndar, Imovelweb e outros. Crie as tarefas no Apify (uma de aluguel e outra de venda); o Radar inicia uma execução por dia de cada uma e calcula sozinho o limite de anúncios e de gasto para o crédito grátis de US$ 5 durar o mês todo."
       >
         <ApifyForm hasToken={envState("APIFY_TOKEN") === "valid"} />
+      </Section>
+      <Section
+        title="Filtros da coleta automática"
+        description="Padrão: o robô traz todos os apartamentos e casas de BH. Com filtros, ele busca só o que você escolher e o crédito rende mais. Valem para as tarefas de aluguel e de venda a partir da próxima execução."
+      >
+        <ApifyFiltersForm initial={filters} summary={describeFilters(filters)} />
       </Section>
       <Section
         title="Portais: integrações pendentes"

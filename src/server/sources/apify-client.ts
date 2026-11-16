@@ -2,11 +2,13 @@ import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { apifyTaskId } from "@/domain/apify";
 import { actorPricing, planRun, type RunPlan } from "@/domain/apify-budget";
+import { actorInput, isDefaultFilters, type Business } from "@/domain/collect-filters";
 import { getDb } from "@/db";
 import { sources } from "@/db/schema";
 import { optionalEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { safeFetch } from "../http";
+import { getCollectFilters } from "../collect-filters";
 
 const API = "https://api.apify.com/v2";
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -29,10 +31,10 @@ function taskPath(task: string): string {
   return `${API}/actor-tasks/${encodeURIComponent(id)}`;
 }
 
-async function call(url: string, opts: { method?: "GET" | "POST"; notFound?: "null" } = {}): Promise<unknown> {
+async function call(url: string, opts: { method?: "GET" | "POST"; notFound?: "null"; body?: unknown } = {}): Promise<unknown> {
   const res = await safeFetch(url, {
     method: opts.method,
-    body: opts.method === "POST" ? "{}" : undefined,
+    body: opts.method === "POST" ? JSON.stringify(opts.body ?? {}) : undefined,
     maxBytes: MAX_BYTES,
     timeoutMs: 40_000,
     accept: "application/json",
@@ -109,8 +111,12 @@ export async function startDailyApifyRun(task: string, now = new Date()): Promis
     const q = new URLSearchParams({ maxItems: String(plan.maxItems), maxTotalChargeUsd: plan.maxChargeUsd.toFixed(2) });
     if (plan.timeoutSecs) q.set("timeout", String(plan.timeoutSecs));
     if (plan.memoryMbytes) q.set("memory", String(plan.memoryMbytes));
-    await call(`${taskPath(task)}/runs?${q.toString()}`, { method: "POST" });
-    const note = `Execução iniciada: até ${plan.maxItems} anúncios e US$ ${plan.maxChargeUsd.toFixed(2)} (restam US$ ${plan.budgetLeftUsd.toFixed(2)} para ${plan.runsLeft} execuções no ciclo).`;
+    // The owner's filters go with the run (merged over the task input), so the robot only charges for matching listings.
+    const [taskInfo, filters] = await Promise.all([call(taskPath(task)), getCollectFilters()]);
+    const input = (data(taskInfo).input ?? {}) as Obj;
+    const business: Business = input.business === "SALE" || input.business === "RENTAL" ? input.business : null;
+    await call(`${taskPath(task)}/runs?${q.toString()}`, { method: "POST", body: actorInput(filters, business) });
+    const note = `${isDefaultFilters(filters) ? "" : "Com filtros. "}Execução iniciada: até ${plan.maxItems} anúncios e US$ ${plan.maxChargeUsd.toFixed(2)} (restam US$ ${plan.budgetLeftUsd.toFixed(2)} para ${plan.runsLeft} execuções no ciclo).`;
     logger.info({ task: apifyTaskId(task), ...plan }, "apify run started");
     return note;
   } catch (err) {
