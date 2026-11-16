@@ -4,7 +4,7 @@ import type { UrbanKind } from "./layers";
 
 /**
  * Critical evaluation of one offer in one mode: a 0–100 grade made of explained parts (price
- * against comparables, running cost or yield, location risk, convenience, the home itself),
+ * against comparables, running cost or yield, convenience, the home itself; geographic risk is a separate note),
  * with strengths and points of attention. Unknown inputs score neutral and lower the
  * confidence; they are never read as good news.
  */
@@ -33,7 +33,17 @@ export type EvalInput = {
 
 export type Grade = "A" | "B" | "C" | "D" | "E";
 export type EvalPart = { key: "preco" | "custos" | "rendimento" | "risco" | "conveniencia" | "imovel"; label: string; points: number; max: number };
-export type Evaluation = { score: number; grade: Grade; label: string; confidence: "alta" | "media" | "baixa"; parts: EvalPart[]; pros: string[]; cons: string[] };
+export type Evaluation = {
+  score: number;
+  grade: Grade;
+  label: string;
+  confidence: "alta" | "media" | "baixa";
+  parts: EvalPart[];
+  pros: string[];
+  cons: string[];
+  /** Geographic risk (landslide, flood...) shown with the grade but never counted in it. */
+  riskNote?: string | null;
+};
 
 export const GRADE_LABEL: Record<Grade, string> = { A: "Excelente", B: "Boa", C: "Na média", D: "Abaixo da média", E: "Fraca" };
 export const CONFIDENCE_LABEL: Record<Evaluation["confidence"], string> = { alta: "Confiança alta", media: "Confiança média", baixa: "Confiança baixa" };
@@ -66,13 +76,13 @@ export function evaluate(i: EvalInput): Evaluation {
   let unknowns = 0;
   const unit = i.mode === "compra" ? "Preço por m²" : "Custo mensal por m²";
 
-  // Price against comparables (40).
-  let price = 20;
+  // Price against comparables (50).
+  let price = 25;
   if (i.priceVsMedianPct == null) {
     unknowns++;
     cons.push("Ainda não há imóveis comparáveis suficientes para avaliar o preço.");
   } else {
-    price = clamp(20 + i.priceVsMedianPct, 0, 40);
+    price = clamp(25 + i.priceVsMedianPct * 1.25, 0, 50);
     const where = SCOPE_TEXT[i.comparableScope ?? "regional"];
     const p = Math.abs(Math.round(i.priceVsMedianPct));
     if (i.priceVsMedianPct >= 5) pros.push(`${unit} ${p}% abaixo da mediana de ${i.comparables} imóveis parecidos ${where}.`);
@@ -80,11 +90,11 @@ export function evaluate(i: EvalInput): Evaluation {
     else pros.push(`${unit} alinhado à mediana de ${i.comparables} imóveis parecidos ${where}.`);
   }
   if (i.recentDropBp != null && i.recentDropBp >= 100) {
-    price = Math.min(40, price + 3);
+    price = Math.min(50, price + 4);
     pros.push(`Preço reduzido em ${pctBp(i.recentDropBp)} nos últimos 30 dias.`);
   }
 
-  // Running cost (rent) or yield (buy) (10).
+  // Running cost (rent) or yield (buy) (15).
   let second: EvalPart;
   if (i.mode === "aluguel") {
     let pts = 5;
@@ -115,21 +125,19 @@ export function evaluate(i: EvalInput): Evaluation {
     second = { key: "rendimento", label: "Rendimento estimado", points: pts, max: 10 };
   }
 
-  // Location risk (25).
-  let risk = 12;
-  if (!i.risk) {
-    unknowns++;
-    cons.push("Localização ainda não analisada (risco e infraestrutura).");
-  } else {
-    risk = Math.round(25 * (1 - i.risk.score / 100));
+  // Geographic risk is informative only (owner decision): it never changes the grade.
+  let riskNote: string | null = null;
+  if (i.risk) {
     const why = i.risk.reasons.slice(0, 2).join("; ");
-    if (i.risk.level === "alto" || i.risk.level === "atencao") cons.push(`Índice de risco da localização ${i.risk.level === "alto" ? "alto" : "de atenção"}: ${why}.`);
-    else if (i.risk.level === "moderado") cons.push(`Índice de risco moderado: ${why}.`);
-    else pros.push("Índice de risco baixo segundo as bases consultadas (não substitui vistoria).");
-    if (i.risk.confidence === "reduzida") unknowns++;
+    riskNote =
+      i.risk.level === "alto" || i.risk.level === "atencao"
+        ? `Risco geográfico ${i.risk.level === "alto" ? "alto" : "de atenção"}: ${why}.`
+        : i.risk.level === "moderado"
+          ? `Risco geográfico moderado: ${why}.`
+          : "Risco geográfico baixo segundo as bases consultadas (não substitui vistoria).";
   }
 
-  // Convenience around the address (15).
+  // Convenience around the address (25).
   let conv = 7;
   if (i.facts?.coverage.osm) {
     conv = 0;
@@ -164,15 +172,14 @@ export function evaluate(i: EvalInput): Evaluation {
   }
 
   const parts: EvalPart[] = [
-    { key: "preco", label: "Preço frente a parecidos", points: Math.round(price), max: 40 },
-    second,
-    { key: "risco", label: "Risco da localização", points: risk, max: 25 },
-    { key: "conveniencia", label: "Serviços e transporte", points: conv, max: 15 },
+    { key: "preco", label: "Preço frente a parecidos", points: Math.round(price), max: 50 },
+    { ...second, points: Math.round(second.points * 1.5), max: 15 },
+    { key: "conveniencia", label: "Serviços e transporte", points: Math.round((conv * 25) / 15), max: 25 },
     { key: "imovel", label: "Imóvel e dados", points: Math.min(10, home), max: 10 },
   ];
   const score = clamp(Math.round(parts.reduce((s, p) => s + p.points, 0)), 0, 100);
   const grade = gradeOf(score);
-  return { score, grade, label: GRADE_LABEL[grade], confidence: unknowns === 0 ? "alta" : unknowns === 1 ? "media" : "baixa", parts, pros, cons };
+  return { score, grade, label: GRADE_LABEL[grade], confidence: unknowns === 0 ? "alta" : unknowns === 1 ? "media" : "baixa", parts, pros, cons, riskNote };
 }
 
 /** Inputs of a neighbourhood's place grade (all measured around its centre or over its properties). */
@@ -188,20 +195,14 @@ export type PlaceInput = {
 };
 
 /**
- * Place grade of a neighbourhood (0–100), independent of prices: location risk of its
- * analysed properties (50) and services/transport within 1 km of its centre (50).
+ * Place grade of a neighbourhood (0–100), independent of prices: services and transport
+ * within 1 km of its centre. Geographic risk is shown apart and never counted.
  */
 export function placeScore(i: PlaceInput): { score: number | null; grade: Grade | null; pros: string[]; cons: string[] } {
   const pros: string[] = [];
   const cons: string[] = [];
   if (i.avgRisk == null && i.nearestTransitM == null && i.supermarkets + i.pharmacies + i.hospitals + i.parks === 0) return { score: null, grade: null, pros, cons };
-  let risk = 25;
-  if (i.avgRisk != null) {
-    risk = Math.round(50 * (1 - Math.min(100, i.avgRisk) / 100));
-    if (i.avgRisk < 15) pros.push("Risco médio baixo segundo as bases consultadas");
-    else if (i.avgRisk >= 35) cons.push("Risco médio da localização elevado");
-  }
-  if (i.floodPct != null && i.floodPct >= 30) cons.push(`${Math.round(i.floodPct)}% dos imóveis em área suscetível a inundação`);
+  // Geographic risk stays out of the grade (owner decision); the neighbourhood page still shows it.
   let services = 0;
   if (i.nearestTransitM != null && i.nearestTransitM <= 800) {
     services += 15;
@@ -211,6 +212,6 @@ export function placeScore(i: PlaceInput): { score: number | null; grade: Grade 
   services += Math.min(5, i.transitStations) + Math.min(10, i.supermarkets * 2) + Math.min(8, i.pharmacies) + Math.min(6, i.hospitals * 3) + Math.min(6, i.parks * 2);
   if (i.supermarkets + i.pharmacies >= 6) pros.push("Bem servido de comércio essencial");
   if (i.supermarkets === 0) cons.push("Nenhum supermercado mapeado a 1 km do centro");
-  const score = clamp(risk + Math.min(50, services), 0, 100);
+  const score = clamp(Math.round(Math.min(50, services) * 2), 0, 100);
   return { score, grade: gradeOf(score), pros, cons };
 }

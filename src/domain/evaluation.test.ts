@@ -29,19 +29,26 @@ describe("offer evaluation", () => {
     expect(e.pros.join(" ")).toMatch(/Preço reduzido em 5%/);
     expect(e.cons).toEqual([]);
   });
-  it("expensive and risky → low grade with points of attention", () => {
+  it("geographic risk is a separate note and never changes the grade", () => {
+    const risky = evaluate({ ...good, risk: { score: 90, level: "alto", confidence: "normal", reasons: ["inundação: suscetibilidade alta"] } });
+    expect(risky.score).toBe(evaluate(good).score);
+    expect(risky.parts.map((p) => p.key)).not.toContain("risco");
+    expect(risky.riskNote).toMatch(/Risco geográfico alto: inundação/);
+    expect(risky.parts.reduce((s, p) => s + p.max, 0)).toBe(100);
+  });
+  it("expensive → low grade with points of attention", () => {
     const e = evaluate({ ...good, priceVsMedianPct: -25, recentDropBp: null, costComplete: false, risk: { score: 70, level: "alto", confidence: "normal", reasons: ["inundação: suscetibilidade alta"] }, parking: 0 });
-    expect(e.grade).toBe("E");
+    expect(["D", "E"]).toContain(e.grade);
     expect(e.cons.join(" ")).toMatch(/25% acima/);
-    expect(e.cons.join(" ")).toMatch(/risco da localização alto: inundação/);
+    expect(e.cons.join(" ")).not.toMatch(/inundação/);
     expect(e.cons).toContain("Sem vaga de garagem.");
   });
   it("unknowns are neutral and lower the confidence, never good news", () => {
     const e = evaluate({ ...good, priceVsMedianPct: null, comparables: 0, comparableScope: null, recentDropBp: null, facts: null, risk: null, exactLocation: false, sources: 1 });
     expect(e.confidence).toBe("baixa");
-    expect(e.parts.find((p) => p.key === "preco")!.points).toBe(20);
-    expect(e.parts.find((p) => p.key === "risco")!.points).toBe(12);
-    expect(e.pros.some((p) => /risco baixo/.test(p))).toBe(false);
+    expect(e.parts.find((p) => p.key === "preco")!.points).toBe(25);
+    expect(e.riskNote).toBeNull();
+    expect(e.pros.some((p) => /risco/i.test(p))).toBe(false);
   });
   it("buy mode scores the yield instead of the running cost", () => {
     const high = evaluate({ ...good, mode: "compra", yieldBp: 650 });
@@ -61,11 +68,13 @@ describe("place score", () => {
   it("no data at all → no grade", () => {
     expect(placeScore({ avgRisk: null, floodPct: null, nearestTransitM: null, transitStations: 0, supermarkets: 0, pharmacies: 0, hospitals: 0, parks: 0 }).grade).toBeNull();
   });
-  it("low risk and well served beats risky and far", () => {
+  it("well served beats far, regardless of geographic risk", () => {
     const a = placeScore({ avgRisk: 5, floodPct: 0, nearestTransitM: 300, transitStations: 3, supermarkets: 5, pharmacies: 6, hospitals: 2, parks: 3 });
     const b = placeScore({ avgRisk: 50, floodPct: 60, nearestTransitM: 4000, transitStations: 0, supermarkets: 0, pharmacies: 1, hospitals: 0, parks: 0 });
     expect(a.score!).toBeGreaterThan(b.score!);
     expect(a.grade).toBe("A");
-    expect(b.cons.join(" ")).toMatch(/60% dos imóveis/);
+    expect(b.cons.join(" ")).not.toMatch(/inundação/);
+    const sameServicesRisky = placeScore({ avgRisk: 90, floodPct: 90, nearestTransitM: 300, transitStations: 3, supermarkets: 5, pharmacies: 6, hospitals: 2, parks: 3 });
+    expect(sameServicesRisky.score).toBe(a.score);
   });
 });

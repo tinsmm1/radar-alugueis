@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck, Info } from "lucide-react";
+import { CircleAlert, CircleCheck, Info, Mountain } from "lucide-react";
 import { GRADE_CLASS } from "@/components/property/badges";
 import { CONFIDENCE_LABEL, EVALUATION_NOTE, type Evaluation } from "@/domain/evaluation";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,12 @@ export function EvaluationPanel({ evaluation, mode }: { evaluation: Evaluation |
           ) : <p className="text-sm text-muted-foreground">Nenhum ponto de atenção nas bases consultadas.</p>}
         </div>
       </div>
+      {e.riskNote && (
+        <div className="rounded-lg border bg-muted/40 p-3 text-sm">
+          <p className="flex gap-2"><Mountain className="mt-0.5 size-4 shrink-0 text-muted-foreground" />{e.riskNote}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Informativo: o risco geográfico (deslizamento, inundação, enxurrada) não entra na nota. Detalhes na análise da localização.</p>
+        </div>
+      )}
       <p className="flex gap-1.5 text-xs text-muted-foreground"><Info className="mt-0.5 size-3.5 shrink-0" />{EVALUATION_NOTE}</p>
     </div>
   );
