@@ -13,11 +13,12 @@ import { checkPriceTargets } from "../notify/events";
 import { deliverPending } from "../notify/deliver";
 import { ADAPTERS } from "../sources/registry";
 import { refreshOpportunities } from "./opportunities";
+import { refreshCommutes } from "../commute/refresh";
 import { applyRetention } from "./retention";
 import { collectSource } from "./source-run";
 
 export type Trigger = "github" | "vercel" | "manual";
-export const STAGES = ["fontes", "camadas", "geocodificar", "analisar", "oportunidades", "notificar", "retencao", "concluido"] as const;
+export const STAGES = ["fontes", "camadas", "geocodificar", "analisar", "deslocamento", "oportunidades", "notificar", "retencao", "concluido"] as const;
 export type Stage = (typeof STAGES)[number];
 export type StepResult = { runId: number; stage: Stage; more: boolean; note: string };
 
@@ -94,6 +95,11 @@ async function work(stage: Stage, runId: number, deadline: number, stats: Record
       const r = await analyzePending(deadline);
       stats.analisados = Number(stats.analisados ?? 0) + r.analyzed;
       return { done: !r.remaining || (r.analyzed === 0 && !r.waiting), note: `${r.analyzed} analisados` };
+    }
+    case "deslocamento": {
+      const r = await refreshCommutes(deadline);
+      stats.deslocamentos = Number(stats.deslocamentos ?? 0) + r.updated;
+      return { done: !r.remaining, note: `${r.updated} deslocamentos calculados` };
     }
     case "oportunidades": {
       stats.oportunidades = (await refreshOpportunities()).withSignals;

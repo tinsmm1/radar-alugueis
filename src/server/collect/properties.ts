@@ -161,7 +161,7 @@ export async function refreshProperties(ids: number[]): Promise<Opened[]> {
         updatedAt: new Date(),
         search: normalizeText([pick("title"), neighborhood, pick("street"), ls.map((l) => l.advertiserName).join(" ")].join(" ")),
         ...(location && moved
-          ? { ...location, geom: location.lat == null ? null : sql`ST_SetSRID(ST_MakePoint(${location.lng}, ${location.lat}), 4326)`, analyzedAt: null, analysis: null, riskScore: null, riskLevel: null, floodLevel: null }
+          ? { ...location, geom: location.lat == null ? null : sql`ST_SetSRID(ST_MakePoint(${location.lng}, ${location.lat}), 4326)`, analyzedAt: null, commuteAt: null, analysis: null, riskScore: null, riskLevel: null, floodLevel: null }
           : {}),
       })
       .where(eq(properties.id, id));

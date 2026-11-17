@@ -111,6 +111,11 @@ export const properties = pgTable(
     rentEvalScore: smallint("rent_eval_score"),
     saleEval: jsonb("sale_eval"),
     saleEvalScore: smallint("sale_eval_score"),
+    /** Commute to the owner's workplaces at their times (src/domain/commute.ts CommuteSummary). */
+    commute: jsonb("commute"),
+    /** Weighted average one-way minutes (sort and filter "até X min do trabalho"). */
+    commuteMinutes: smallint("commute_minutes"),
+    commuteAt: timestamp("commute_at", { withTimezone: true }),
     search: text("search"),
   },
   (t) => [
@@ -121,6 +126,7 @@ export const properties = pgTable(
     index("properties_sale_price").on(t.salePriceCents),
     index("properties_rent_eval").on(t.rentEvalScore),
     index("properties_sale_eval").on(t.saleEvalScore),
+    index("properties_commute").on(t.commuteMinutes),
     index("properties_search").using("gin", sql`${t.search} gin_trgm_ops`),
   ],
 );

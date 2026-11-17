@@ -31,6 +31,13 @@ import type { Evaluation } from "@/domain/evaluation";
 import { favoriteIds } from "@/server/favorites";
 import { similarProperties } from "@/server/queries/property";
 import { watchesFor } from "@/server/queries/watches";
+import { CommutePanel } from "@/components/detail/commute-panel";
+import { DecisionPanel } from "@/components/detail/decision-panel";
+import { buyAffordability } from "@/domain/affordability";
+import type { CommuteSummary } from "@/domain/commute";
+import { locatedWorkplaces } from "@/domain/profile";
+import { quickCommute } from "@/server/commute/refresh";
+import { getProfile } from "@/server/profile";
 
 function Section({ id, title, children, aside }: { id: string; title: string; children: React.ReactNode; aside?: React.ReactNode }) {
   return (
@@ -64,7 +71,11 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
   const buy = wanted === "compra" ? p.forSale || !p.forRent : !p.forRent && p.forSale;
   const saleData = (p.saleOpportunity ?? null) as { rentEstimate?: RentEstimate } | null;
   const mode = buy ? "compra" : "aluguel";
-  const [watches, similar] = await Promise.all([watchesFor(p.id), similarProperties(p, mode)]);
+  const [watches, similar, profile] = await Promise.all([watchesFor(p.id), similarProperties(p, mode), getProfile()]);
+  const hasProfile = locatedWorkplaces(profile).length > 0;
+  const storedCommute = hasProfile ? ((p.commute ?? null) as CommuteSummary | null) : null;
+  const commute = storedCommute ?? (hasProfile && p.lat != null && p.lng != null ? quickCommute(profile, { lat: p.lat, lng: p.lng }) : null);
+  const housingMonthly = buy ? (p.salePriceCents != null ? buyAffordability(p.salePriceCents, p.condoCents, p.iptuMonthlyCents, profile).housingMonthlyCents : null) : (p.totalCents ?? p.rentCents);
   const similarFavs = await favoriteIds(similar.map((s) => s.id));
   const evaluation = ((buy ? p.saleEval : p.rentEval) ?? null) as Evaluation | null;
   const canonical = d.listings.find((l) => l.status !== "indisponivel" && l.rentCents != null && l.rentCents === p.rentCents) ?? d.listings[0];
@@ -115,6 +126,12 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
           <Gallery photos={photos} title={title} />
           <Section id="avaliacao" title={`Avaliação do Radar · ${buy ? "compra" : "aluguel"}`}>
             <EvaluationPanel evaluation={evaluation} mode={mode} />
+          </Section>
+          <Section id="deslocamento" title="Deslocamento até o trabalho">
+            <CommutePanel summary={commute} quick={hasProfile && !storedCommute && commute != null} hasProfile={hasProfile} maxCommuteMin={profile.maxCommuteMin} housingMonthlyCents={housingMonthly} housingLabel={buy ? "parcela SAC + condomínio + IPTU" : "custo mensal conhecido"} />
+          </Section>
+          <Section id="decisao" title="Negociação e decisão">
+            <DecisionPanel mode={mode} negotiation={evaluation?.negotiation ?? null} profile={profile} priceCents={p.salePriceCents} condoCents={p.condoCents} iptuMonthlyCents={p.iptuMonthlyCents} totalCents={p.totalCents} commuteCostCents={commute?.monthlyCostCents ?? null} />
           </Section>
           <Section id="ficha" title="Ficha do imóvel">
             <FactsGrid p={p} />

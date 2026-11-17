@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bath, BedDouble, Car, Clock, Home, Ruler } from "lucide-react";
+import { Bath, BedDouble, Briefcase, Car, Clock, Home, Ruler } from "lucide-react";
 import { FEATURE_LABEL, TYPE_LABEL, type Feature, type Mode, type PropertyType } from "@/domain/listing";
 import { brl, m2, pctBp } from "@/domain/money";
 import { STATUS_LABEL, type ListingStatus } from "@/domain/lifecycle";
@@ -95,6 +95,7 @@ export function PropertyCardView({ p, favorite, selected, compact, mode: wanted 
           <li className="inline-flex items-center gap-1"><BedDouble className="size-3.5 text-muted-foreground" />{p.bedrooms ?? "—"} qto{p.suites ? ` (${p.suites} suíte)` : ""}</li>
           <li className="inline-flex items-center gap-1"><Bath className="size-3.5 text-muted-foreground" />{p.bathrooms ?? "—"}</li>
           <li className="inline-flex items-center gap-1"><Car className="size-3.5 text-muted-foreground" />{p.parking ?? "—"}</li>
+          {p.commuteMinutes != null && <li className="inline-flex items-center gap-1" title="Média até o trabalho, só ida, nos seus horários"><Briefcase className="size-3.5 text-muted-foreground" />{p.commuteMinutes} min</li>}
         </ul>
         {!compact && p.features.length > 0 && (
           <p className="line-clamp-1 text-xs text-muted-foreground">{p.features.slice(0, 4).map((f) => FEATURE_LABEL[f as Feature] ?? f).join(" · ")}{p.features.length > 4 ? ` +${p.features.length - 4}` : ""}</p>

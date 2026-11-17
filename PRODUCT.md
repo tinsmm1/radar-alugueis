@@ -103,7 +103,19 @@ Critical analysis and follow-up:
 20. The owner can follow a property's price with an optional target per mode; drops of followed properties and a reached target are notified once (again only on a further fall), in the app and by e-mail/Telegram.
 21. Tools link to each other keeping the mode: property → similar homes, its neighbourhood, comparator, alert for similar homes; neighbourhoods → search; opportunity tabs → search or alert.
 
+Decision guide and commute:
+
+22. Administração → Perfil e trabalho stores up to 4 workplaces (address or coordinates, mode, departure and return times, days, weight), the maximum acceptable commute, the value of an hour, car and transit costs, income, savings and the grade weights.
+23. Every active located property gets ida and volta door-to-door times at those times: TomTom historic traffic when `TOMTOM_API_KEY` is set (car, bike, walk), otherwise a model calibrated with public BH figures (always for buses); each time shows its method and a range.
+24. With workplaces, the grade gains a "Tempo até o trabalho" part and follows the owner's weights; search sorts by "Mais perto do trabalho" and filters by maximum commute; geographic risk still never enters the grade.
+25. The property page shows the real monthly cost of living there (housing + transport + time), a negotiation plan (opening, target, ceiling) with its reasons, whether it fits the household budget and a due-diligence checklist.
+26. The decision guide compares regionais and bairros (price per m² spread, commute, yield, good offers, flood share), marks the price × commute Pareto frontier and lists the best offers within the owner's limits.
+
 Technical: lint, typed lint, rule self-check, typecheck, unit, PostGIS integration and E2E tests pass; the toolkit checks recorded in `docs/quality.md` pass.
+
+## Decision guide (2026-11)
+
+The owner asked for a complete guide to the best rent and purchase opportunities: deep comparisons between properties and regions, best positions, peak-hour traffic to the workplace configured in the admin with departure and return times, and grades built on explained analyses. Implemented as the profile (`settings.profile`), the `deslocamento` stage, the personalised grade, negotiation and affordability on the property page, and the `/guia` page. Methodology in `docs/analises.md`.
 
 ## Next delivery
 

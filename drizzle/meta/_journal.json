@@ -36,6 +36,13 @@
       "when": 1794840572236,
       "tag": "0004_residencial_filtros",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795430000000,
+      "tag": "0005_perfil_deslocamento",
+      "breakpoints": true
     }
   ]
 }

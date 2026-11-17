@@ -78,3 +78,19 @@ describe("place score", () => {
     expect(sameServicesRisky.score).toBe(a.score);
   });
 });
+
+describe("evaluation with the owner's profile", () => {
+  const commute = (m: number) => ({ avgOneWayMin: m, worstOneWayMin: m, worstName: "Trabalho", monthlyHours: (m * 2 * 22) / 60, monthlyCostCents: 0, monthlyTimeCostCents: 0, method: "modelo" as const, workplaces: [], computedAt: "" });
+  it("adds a commute part, keeps 100 points and prefers the closer home", () => {
+    const near = evaluate({ ...good, commute: commute(12), maxCommuteMin: 45 });
+    const far = evaluate({ ...good, commute: commute(80), maxCommuteMin: 45 });
+    expect(near.parts.map((p) => p.key)).toContain("deslocamento");
+    expect(near.parts.reduce((s, p) => s + p.max, 0)).toBe(100);
+    expect(near.score).toBeGreaterThan(far.score);
+    expect(near.commute?.avgOneWayMin).toBe(12);
+  });
+  it("custom weights are respected", () => {
+    const e = evaluate({ ...good, commute: commute(30), weights: { preco: 20, custos: 10, deslocamento: 50, servicos: 10, imovel: 10 } });
+    expect(e.parts.find((p) => p.key === "deslocamento")!.max).toBe(50);
+  });
+});

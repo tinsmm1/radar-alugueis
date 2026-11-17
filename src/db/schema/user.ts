@@ -10,6 +10,8 @@ export const settings = pgTable("settings", {
   notificationsSeenAt: timestamp("notifications_seen_at", { withTimezone: true }),
   /** Filters sent to the Apify robots and checked on import (see src/domain/collect-filters.ts). */
   collectFilters: jsonb("collect_filters"),
+  /** Decision profile: workplaces and times, commute costs, finances, grade weights (src/domain/profile.ts). */
+  profile: jsonb("profile"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

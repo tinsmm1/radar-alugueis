@@ -64,6 +64,7 @@ export function whereFor(f: Filter, opts: { ignoreBbox?: boolean; ids?: number[]
   if (f.riscoMax) c.push(inArray(p.riskLevel, RISK_ORDER.slice(0, RISK_ORDER.indexOf(f.riscoMax) + 1)));
   if (f.semInundacao) c.push(sql`${p.analyzedAt} is not null and coalesce(${p.floodLevel}, 0) = 0`);
   if (f.notaMin) c.push(gte(buy ? p.saleEvalScore : p.rentEvalScore, GRADE_MIN[f.notaMin]));
+  if (f.deslocamentoMax != null) c.push(sql`${p.commuteMinutes} <= ${f.deslocamentoMax}`);
   if (f.oportunidades) c.push(buy ? sql`${p.saleOpportunityScore} > 0` : sql`${p.opportunityScore} > 0`);
   if (f.favoritos) c.push(sql`exists (select 1 from favorites fv where fv.property_id = ${p.id})`);
   if (f.fontes.length) c.push(arrayOverlaps(p.sourceKeys, f.fontes));
@@ -86,6 +87,7 @@ function orderFor(f: Filter): SQL[] {
     case "maior_reducao": return [nulls(buy ? p.saleDropBp : p.dropBp, "desc"), asc(p.id)];
     case "menor_risco": return [nulls(p.riskScore), asc(p.id)];
     case "melhor_avaliacao": return [nulls(buy ? p.saleEvalScore : p.rentEvalScore, "desc"), desc(opp), asc(p.id)];
+    case "menor_deslocamento": return [nulls(p.commuteMinutes), nulls(buy ? p.saleEvalScore : p.rentEvalScore, "desc"), asc(p.id)];
     case "oportunidade": return [desc(opp), nulls(buy ? p.salePriceM2Cents : p.costPerM2Cents), asc(p.id)];
     default: return [sql`(${p.status} = 'ativo') desc`, desc(opp), desc(p.firstSeenAt), asc(p.id)];
   }
@@ -97,7 +99,7 @@ export const cardColumns = {
   costPerM2Cents: p.costPerM2Cents, areaM2: p.areaM2, bedrooms: p.bedrooms, suites: p.suites, bathrooms: p.bathrooms, parking: p.parking,
   features: p.features, sourceKeys: p.sourceKeys, listingCount: p.listingCount, status: p.status, isDemo: p.isDemo, lastSeenAt: p.lastSeenAt,
   firstSeenAt: p.firstSeenAt, dropBp: p.dropBp, droppedAt: p.droppedAt, lat: p.lat, lng: p.lng, geoPrecision: p.geoPrecision,
-  riskScore: p.riskScore, riskLevel: p.riskLevel, opportunity: p.opportunity, opportunityScore: p.opportunityScore,
+  riskScore: p.riskScore, riskLevel: p.riskLevel, commuteMinutes: p.commuteMinutes, opportunity: p.opportunity, opportunityScore: p.opportunityScore,
   forRent: p.forRent, forSale: p.forSale, salePriceCents: p.salePriceCents, salePriceM2Cents: p.salePriceM2Cents, saleDropBp: p.saleDropBp, saleDroppedAt: p.saleDroppedAt,
   estRentCents: p.estRentCents, grossYieldBp: p.grossYieldBp, saleOpportunity: p.saleOpportunity, saleOpportunityScore: p.saleOpportunityScore,
   rentEvalScore: p.rentEvalScore, saleEvalScore: p.saleEvalScore,

@@ -1,6 +1,9 @@
 import { meters, pctBp } from "./money";
 import type { LocationFacts, RiskIndex } from "./risk";
 import type { UrbanKind } from "./layers";
+import { commuteFraction, commuteNotes, type CommuteSummary } from "./commute";
+import type { Negotiation } from "./negotiation";
+import { WEIGHT_KEYS, type WeightKey } from "./profile";
 
 /**
  * Critical evaluation of one offer in one mode: a 0–100 grade made of explained parts (price
@@ -29,10 +32,18 @@ export type EvalInput = {
   areaM2: number | null;
   exactLocation: boolean;
   sources: number;
+  /** Commute to the owner's workplaces at their times (null/absent = no workplace configured). */
+  commute?: CommuteSummary | null;
+  maxCommuteMin?: number;
+  /** Normalised weights (sum 100) from the owner's profile; absent = classic weights 50/15/25/10. */
+  weights?: Record<WeightKey, number>;
+  /** Negotiation plan, carried in the stored evaluation for the property page. */
+  negotiation?: Negotiation | null;
 };
 
 export type Grade = "A" | "B" | "C" | "D" | "E";
-export type EvalPart = { key: "preco" | "custos" | "rendimento" | "risco" | "conveniencia" | "imovel"; label: string; points: number; max: number };
+export type EvalPart = { key: "preco" | "custos" | "rendimento" | "risco" | "conveniencia" | "deslocamento" | "imovel"; label: string; points: number; max: number };
+export type CommuteBrief = { avgOneWayMin: number; worstOneWayMin: number; worstName: string; monthlyHours: number; monthlyCostCents: number; monthlyTimeCostCents: number; method: CommuteSummary["method"] };
 export type Evaluation = {
   score: number;
   grade: Grade;
@@ -43,6 +54,8 @@ export type Evaluation = {
   cons: string[];
   /** Geographic risk (landslide, flood...) shown with the grade but never counted in it. */
   riskNote?: string | null;
+  commute?: CommuteBrief | null;
+  negotiation?: Negotiation | null;
 };
 
 export const GRADE_LABEL: Record<Grade, string> = { A: "Excelente", B: "Boa", C: "Na média", D: "Abaixo da média", E: "Fraca" };
@@ -171,15 +184,54 @@ export function evaluate(i: EvalInput): Evaluation {
     pros.push(`Anunciado em ${i.sources} fontes (dados conferidos entre elas).`);
   }
 
-  const parts: EvalPart[] = [
-    { key: "preco", label: "Preço frente a parecidos", points: Math.round(price), max: 50 },
-    { ...second, points: Math.round(second.points * 1.5), max: 15 },
-    { key: "conveniencia", label: "Serviços e transporte", points: Math.round((conv * 25) / 15), max: 25 },
-    { key: "imovel", label: "Imóvel e dados", points: Math.min(10, home), max: 10 },
-  ];
+  // Commute to the owner's workplaces (only when a profile with located workplaces exists).
+  let commuteF: number | null = null;
+  if (i.commute) {
+    commuteF = commuteFraction(i.commute, i.maxCommuteMin ?? 45);
+    const notes = commuteNotes(i.commute, i.maxCommuteMin ?? 45);
+    pros.push(...notes.pros);
+    cons.push(...notes.cons);
+  }
+
+  let parts: EvalPart[];
+  if (!i.weights && commuteF == null) {
+    parts = [
+      { key: "preco", label: "Preço frente a parecidos", points: Math.round(price), max: 50 },
+      { ...second, points: Math.round(second.points * 1.5), max: 15 },
+      { key: "conveniencia", label: "Serviços e transporte", points: Math.round((conv * 25) / 15), max: 25 },
+      { key: "imovel", label: "Imóvel e dados", points: Math.min(10, home), max: 10 },
+    ];
+  } else {
+    const w = { ...(i.weights ?? { preco: 40, custos: 12, deslocamento: commuteF == null ? 0 : 20, servicos: 18, imovel: 10 }) };
+    if (commuteF == null) w.deslocamento = 0;
+    const maxes = roundTo100(w);
+    const frac: Record<WeightKey, number> = { preco: price / 50, custos: second.points / 10, deslocamento: commuteF ?? 0, servicos: Math.min(1, conv / 15), imovel: Math.min(10, home) / 10 };
+    const label: Record<WeightKey, [EvalPart["key"], string]> = {
+      preco: ["preco", "Preço frente a parecidos"], custos: [second.key, second.label], deslocamento: ["deslocamento", "Tempo até o trabalho"],
+      servicos: ["conveniencia", "Serviços e transporte"], imovel: ["imovel", "Imóvel e dados"],
+    };
+    parts = WEIGHT_KEYS.filter((k) => maxes[k] > 0).map((k) => ({ key: label[k][0], label: label[k][1], points: Math.round(frac[k] * maxes[k]), max: maxes[k] }));
+  }
   const score = clamp(Math.round(parts.reduce((s, p) => s + p.points, 0)), 0, 100);
   const grade = gradeOf(score);
-  return { score, grade, label: GRADE_LABEL[grade], confidence: unknowns === 0 ? "alta" : unknowns === 1 ? "media" : "baixa", parts, pros, cons, riskNote };
+  const commute: CommuteBrief | null = i.commute
+    ? { avgOneWayMin: i.commute.avgOneWayMin, worstOneWayMin: i.commute.worstOneWayMin, worstName: i.commute.worstName, monthlyHours: i.commute.monthlyHours, monthlyCostCents: i.commute.monthlyCostCents, monthlyTimeCostCents: i.commute.monthlyTimeCostCents, method: i.commute.method }
+    : null;
+  return { score, grade, label: GRADE_LABEL[grade], confidence: unknowns === 0 ? "alta" : unknowns === 1 ? "media" : "baixa", parts, pros, cons, riskNote, commute, negotiation: i.negotiation ?? null };
+}
+
+/** Integer maxima that keep the weights' proportions and add up to exactly 100. */
+function roundTo100(w: Record<WeightKey, number>): Record<WeightKey, number> {
+  const sum = WEIGHT_KEYS.reduce((s, k) => s + w[k], 0) || 1;
+  const raw = WEIGHT_KEYS.map((k) => ({ k, v: (w[k] * 100) / sum }));
+  const out = Object.fromEntries(raw.map(({ k, v }) => [k, Math.floor(v)])) as Record<WeightKey, number>;
+  let left = 100 - WEIGHT_KEYS.reduce((s, k) => s + out[k], 0);
+  for (const { k } of [...raw].sort((a, b) => (b.v % 1) - (a.v % 1))) {
+    if (left <= 0) break;
+    out[k]++;
+    left--;
+  }
+  return out;
 }
 
 /** Inputs of a neighbourhood's place grade (all measured around its centre or over its properties). */

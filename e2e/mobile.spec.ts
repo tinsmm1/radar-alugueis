@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("phone: no sideways scroll on the main screens and filters open in a sheet", async ({ page }) => {
-  for (const path of ["/", "/?vista=mapa", "/oportunidades", "/bairros", "/comparar", "/favoritos", "/admin", "/admin/fontes"]) {
+  for (const path of ["/", "/?vista=mapa", "/guia", "/oportunidades", "/bairros", "/comparar", "/favoritos", "/admin", "/admin/fontes", "/admin/perfil"]) {
     await page.goto(path);
     await page.waitForLoadState("networkidle");
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

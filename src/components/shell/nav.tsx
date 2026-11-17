@@ -4,13 +4,14 @@ import { Suspense } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { Mode } from "@/domain/listing";
 import { parseMode } from "@/lib/mode";
-import { Bell, Columns3, Heart, Map, Search, Settings, Sparkles, Bookmark } from "lucide-react";
+import { Bell, Columns3, Compass, Heart, Map, Search, Settings, Sparkles, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
 import { ModeSwitch } from "./mode-switch";
 
 export const NAV = [
   { href: "/", label: "Buscar", icon: Search },
+  { href: "/guia", label: "Guia", icon: Compass },
   { href: "/oportunidades", label: "Oportunidades", icon: Sparkles },
   { href: "/bairros", label: "Bairros", icon: Map },
   { href: "/comparar", label: "Comparar", icon: Columns3 },
@@ -23,7 +24,7 @@ function active(pathname: string, href: string) {
 }
 
 /** Mode-aware pages keep the current mode in their links. */
-const MODE_PAGES = new Set(["/", "/oportunidades", "/bairros", "/comparar", "/favoritos"]);
+const MODE_PAGES = new Set(["/", "/guia", "/oportunidades", "/bairros", "/comparar", "/favoritos"]);
 
 function useHref(mode: Mode) {
   return (href: string) => (MODE_PAGES.has(href) ? `${href}?modo=${mode}` : href);
@@ -83,7 +84,7 @@ function NavInner({ unread, compareCount, mode: initial, urlMode }: { unread: nu
         </div>
       </header>
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="Principal (celular)">
-        {NAV.filter((n) => n.href !== "/buscas").map(({ href, label, icon: Icon }) => (
+        {NAV.filter((n) => n.href !== "/buscas" && n.href !== "/bairros").map(({ href, label, icon: Icon }) => (
           <Link key={href} href={link(href)} className={cn("flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium text-muted-foreground", active(pathname, href) && "text-primary")}>
             <Icon className="size-5" aria-hidden />
             {label}

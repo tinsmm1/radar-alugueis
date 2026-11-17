@@ -18,7 +18,7 @@ function counts(f: Filter) {
     loc: n(f.bairros, f.regionais, f.perto, f.bbox),
     fis: n(f.tipos, f.areaMin, f.areaMax, f.quartosMin, f.quartosMax, f.suitesMin, f.banheirosMin, f.vagasMin),
     car: f.caracteristicas.length,
-    add: n(f.recentesDias, f.atualizadosDias, f.reducao, f.anunciante, f.localizacao, f.riscoMax, f.notaMin, f.semInundacao, f.oportunidades, f.favoritos, f.incluirIndisponiveis, f.fontes),
+    add: n(f.recentesDias, f.atualizadosDias, f.reducao, f.anunciante, f.localizacao, f.riscoMax, f.notaMin, f.deslocamentoMax, f.semInundacao, f.oportunidades, f.favoritos, f.incluirIndisponiveis, f.fontes),
   };
 }
 
@@ -130,6 +130,9 @@ export function FilterPanel({ facets, inSheet }: { facets: Facets; inSheet?: boo
         </Field>
         <Field label="Avaliação do Radar (mínima)" hint="Nota que compara preço, risco, serviços e dados com imóveis parecidos.">
           <ChoiceChips value={f.notaMin} options={[["A", "A · Excelente"], ["B", "B ou melhor"], ["C", "C ou melhor"]]} onChange={(v) => update({ notaMin: v })} />
+        </Field>
+        <Field label="Tempo até o trabalho (máximo, só ida)" hint="Média ponderada dos locais em Administração → Perfil e trabalho, nos seus horários.">
+          <ChoiceChips value={f.deslocamentoMax} options={[[20, "20 min"], [30, "30 min"], [45, "45 min"], [60, "1 h"]]} onChange={(v) => update({ deslocamentoMax: v })} />
         </Field>
         <SwitchRow id="sem-inundacao" label="Fora de suscetibilidade a inundação" hint="Segundo a carta do SGB/IPT. Só imóveis já analisados." checked={f.semInundacao} onChange={(v) => update({ semInundacao: v })} />
         <SwitchRow id="reducao" label="Com redução de preço" hint="Reduções nos últimos 60 dias." checked={f.reducao} onChange={(v) => update({ reducao: v })} />

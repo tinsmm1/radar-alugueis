@@ -2,7 +2,7 @@ import { z } from "zod";
 import { FEATURE_LABEL, FEATURES, MODES, PROPERTY_TYPES, TYPE_LABEL, type Mode } from "./listing";
 import { parseBbox } from "./geo";
 
-export const SORTS = ["relevancia", "menor_total", "menor_aluguel", "menor_m2", "menor_preco", "menor_preco_m2", "maior_rendimento", "maior_area", "recentes", "maior_reducao", "menor_risco", "oportunidade", "melhor_avaliacao"] as const;
+export const SORTS = ["relevancia", "menor_total", "menor_aluguel", "menor_m2", "menor_preco", "menor_preco_m2", "maior_rendimento", "maior_area", "recentes", "maior_reducao", "menor_risco", "oportunidade", "melhor_avaliacao", "menor_deslocamento"] as const;
 export type Sort = (typeof SORTS)[number];
 
 export const SORT_LABEL: Record<Sort, string> = {
@@ -19,12 +19,13 @@ export const SORT_LABEL: Record<Sort, string> = {
   menor_risco: "Menor índice de risco",
   oportunidade: "Melhores oportunidades",
   melhor_avaliacao: "Melhor avaliação",
+  menor_deslocamento: "Mais perto do trabalho",
 };
 
 /** Sort options offered in each mode. */
 export const SORTS_BY_MODE: Record<Mode, Sort[]> = {
-  aluguel: ["relevancia", "melhor_avaliacao", "menor_total", "menor_aluguel", "menor_m2", "maior_area", "recentes", "maior_reducao", "menor_risco", "oportunidade"],
-  compra: ["relevancia", "melhor_avaliacao", "menor_preco", "menor_preco_m2", "maior_rendimento", "maior_area", "recentes", "maior_reducao", "menor_risco", "oportunidade"],
+  aluguel: ["relevancia", "melhor_avaliacao", "menor_deslocamento", "menor_total", "menor_aluguel", "menor_m2", "maior_area", "recentes", "maior_reducao", "menor_risco", "oportunidade"],
+  compra: ["relevancia", "melhor_avaliacao", "menor_deslocamento", "menor_preco", "menor_preco_m2", "maior_rendimento", "maior_area", "recentes", "maior_reducao", "menor_risco", "oportunidade"],
 };
 
 const money = z.int().min(0).max(1_000_000).optional(); // reais
@@ -74,6 +75,8 @@ export const filterSchema = z.object({
   riscoMax: z.enum(["baixo", "moderado", "atencao"]).optional(),
   /** Minimum grade of the critical evaluation in the current mode (A ≥ 80, B ≥ 65, C ≥ 50). */
   notaMin: z.enum(["A", "B", "C"]).optional(),
+  /** Maximum one-way commute to the owner's workplaces (weighted average, minutes). */
+  deslocamentoMax: z.int().min(5).max(180).optional(),
   semInundacao: z.boolean().default(false),
   oportunidades: z.boolean().default(false),
   incluirIndisponiveis: z.boolean().default(false),
@@ -88,7 +91,7 @@ const LISTS = ["bairros", "regionais", "tipos", "caracteristicas", "fontes"] as 
 const NUMBERS = [
   "aluguelMin", "aluguelMax", "condoMin", "condoMax", "iptuMin", "iptuMax", "totalMin", "totalMax", "m2Max", "areaMin", "areaMax",
   "quartosMin", "quartosMax", "suitesMin", "banheirosMin", "vagasMin", "recentesDias", "atualizadosDias", "raioKm",
-  "precoMin", "precoMax", "precoM2Max", "rendimentoMin",
+  "precoMin", "precoMax", "precoM2Max", "rendimentoMin", "deslocamentoMax",
 ] as const;
 const FLAGS = ["reducao", "custoCompleto", "semInundacao", "oportunidades", "incluirIndisponiveis", "favoritos"] as const;
 const STRINGS = ["modo", "q", "perto", "pertoNome", "bbox", "anunciante", "localizacao", "riscoMax", "notaMin", "ordem"] as const;
@@ -181,6 +184,7 @@ export function describeFilter(f: Filter): string {
     f.custoCompleto && "custo completo",
     f.riscoMax && `risco até ${f.riscoMax}`,
     f.notaMin && `avaliação ${f.notaMin}${f.notaMin === "A" ? "" : " ou melhor"}`,
+    f.deslocamentoMax != null && `até ${f.deslocamentoMax} min do trabalho`,
     f.semInundacao && "fora de suscetibilidade a inundação",
     f.oportunidades && "oportunidades",
     f.favoritos && "favoritos",

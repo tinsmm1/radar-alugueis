@@ -105,7 +105,7 @@ export async function geocodePending(deadline: number, max = 40): Promise<{ trie
     if (hit) {
       located++;
       done.push(p.id);
-      await db.update(properties).set({ lat: hit.lat, lng: hit.lng, geom: sql`ST_SetSRID(ST_MakePoint(${hit.lng}, ${hit.lat}), 4326)`, geoPrecision: hit.precision, geoSource: hit.precision === "bairro" ? "bairro" : "nominatim", geoTriedAt: new Date(), analyzedAt: null }).where(eq(properties.id, p.id));
+      await db.update(properties).set({ lat: hit.lat, lng: hit.lng, geom: sql`ST_SetSRID(ST_MakePoint(${hit.lng}, ${hit.lat}), 4326)`, geoPrecision: hit.precision, geoSource: hit.precision === "bairro" ? "bairro" : "nominatim", geoTriedAt: new Date(), analyzedAt: null, commuteAt: null }).where(eq(properties.id, p.id));
     } else {
       await db.update(properties).set({ geoTriedAt: new Date() }).where(eq(properties.id, p.id));
     }
