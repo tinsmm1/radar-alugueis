@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { parseCoordinate, parseCoordinatePair } from "@/domain/geo";
 import { WEIGHT_KEYS, WEIGHT_LABEL, type Profile, type WeightKey } from "@/domain/profile";
 import { recalcProfileNow, saveProfile } from "@/server/actions/profile";
 import { WorkplaceFields, type WorkplaceDraft } from "./workplace-fields";
@@ -15,10 +16,8 @@ const cents = (v: string) => {
   const n = Number(v.replace(",", "."));
   return v.trim() === "" || !Number.isFinite(n) ? null : Math.round(n * 100);
 };
-const coord = (v: string) => {
-  const n = Number(v.replace(",", "."));
-  return v.trim() === "" || !Number.isFinite(n) ? null : n;
-};
+/** Decimal ("-19.98") or degrees ("19°59'00.8\"S"), as copied from Google Maps. */
+const coord = (v: string) => parseCoordinate(v);
 let seq = 0;
 const draftOf = (w: Profile["workplaces"][number]): WorkplaceDraft => ({ key: w.id, id: w.id, name: w.name, address: w.address, lat: w.lat == null ? "" : String(w.lat), lng: w.lng == null ? "" : String(w.lng), mode: w.mode, departure: w.departure, returnAt: w.returnAt, days: w.days, weight: w.weight });
 const blank = (): WorkplaceDraft => ({ key: `novo-${++seq}`, name: "", address: "", lat: "", lng: "", mode: "carro", departure: "08:00", returnAt: "18:00", days: [1, 2, 3, 4, 5], weight: 5 });
@@ -55,7 +54,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
   const submit = () =>
     startSave(async () => {
       const res = await saveProfile({
-        workplaces: wps.map((w) => ({ id: w.id, name: w.name, address: w.address, lat: coord(w.lat), lng: coord(w.lng), mode: w.mode, departure: w.departure, returnAt: w.returnAt, days: w.days, weight: w.weight })),
+        workplaces: wps.map((w) => ({ id: w.id, name: w.name, address: w.address, lat: parseCoordinatePair(w.lat)?.lat ?? coord(w.lat), lng: parseCoordinatePair(w.lat)?.lng ?? coord(w.lng), mode: w.mode, departure: w.departure, returnAt: w.returnAt, days: w.days, weight: w.weight })),
         maxCommuteMin: Number(maxCommute) || 45,
         hourValueCents: cents(hour) ?? 0,
         carCostPerKmCents: cents(km) ?? 0,

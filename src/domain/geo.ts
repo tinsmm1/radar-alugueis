@@ -74,3 +74,34 @@ export function parseBbox(value: string | null | undefined): { west: number; sou
   if (west >= east || south >= north || Math.abs(south) > 90 || Math.abs(north) > 90 || Math.abs(west) > 180 || Math.abs(east) > 180) return null;
   return { west, south, east, north };
 }
+
+/** Box around the Belo Horizonte metropolitan area (Nova Lima, Contagem, Betim, Sabará...). */
+export const RMBH_BBOX = { west: -44.4, south: -20.4, east: -43.5, north: -19.5 } as const;
+
+/**
+ * Typed coordinate → decimal degrees. Accepts "-19.9836", "-19,9836", "19°59'00.8\"S" and
+ * "19 59 0.8 S". South and west make it negative. Anything unreadable → null.
+ */
+export function parseCoordinate(text: string): number | null {
+  const t = text.trim().toUpperCase().replace(/[′’]/g, "'").replace(/[″”]/g, '"');
+  if (!t) return null;
+  const plain = Number(t.replace(",", "."));
+  if (Number.isFinite(plain)) return plain;
+  const m = /^(-)?\s*(\d+(?:[.,]\d+)?)\s*[°º ]\s*(?:(\d+(?:[.,]\d+)?)\s*['\s]\s*)?(?:(\d+(?:[.,]\d+)?)\s*(?:"|'')?\s*)?([NSEWLO])?$/.exec(t);
+  if (!m) return null;
+  const [, minus, d, mi, s, hemi] = m;
+  const n = (v: string | undefined) => (v ? Number(v.replace(",", ".")) : 0);
+  if (n(mi) >= 60 || n(s) >= 60) return null;
+  const value = n(d) + n(mi) / 60 + n(s) / 3600;
+  const negative = minus === "-" || hemi === "S" || hemi === "W" || hemi === "O";
+  return Math.round((negative ? -value : value) * 1e6) / 1e6;
+}
+
+/** "lat, lng" pasted from Google Maps into one field → both values (decimal or degrees). */
+export function parseCoordinatePair(text: string): { lat: number; lng: number } | null {
+  const parts = text.split(/\s*[,;]\s*(?=[-\d])|\s{2,}|(?<=[NSEWLO])\s+/i).filter(Boolean);
+  if (parts.length !== 2) return null;
+  const lat = parseCoordinate(parts[0]!);
+  const lng = parseCoordinate(parts[1]!);
+  return lat != null && lng != null ? { lat, lng } : null;
+}

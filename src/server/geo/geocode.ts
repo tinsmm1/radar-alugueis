@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { geolocations, listings, properties } from "@/db/schema";
-import { BH_BBOX, insideBh } from "@/domain/geo";
+import { BH_BBOX, insideBh, RMBH_BBOX } from "@/domain/geo";
 import { normalizeText } from "@/domain/text";
 import { optionalEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
@@ -34,11 +34,12 @@ async function nominatim(params: Record<string, string>): Promise<Array<Record<s
   }
 }
 
-function toHit(r: Record<string, unknown> | undefined, wanted: "exata" | "rua" | "bairro"): Hit | null {
+function toHit(r: Record<string, unknown> | undefined, wanted: "exata" | "rua" | "bairro", metro = false): Hit | null {
   if (!r) return null;
   const lat = Number(r.lat);
   const lng = Number(r.lon);
-  if (!insideBh(lat, lng)) return null;
+  const inMetro = lat > RMBH_BBOX.south && lat < RMBH_BBOX.north && lng > RMBH_BBOX.west && lng < RMBH_BBOX.east;
+  if (!(metro ? inMetro : insideBh(lat, lng))) return null;
   const a = (r.address ?? {}) as Record<string, string>;
   const type = String(r.addresstype ?? r.type ?? "");
   const precision = wanted === "exata" && ["house", "building", "residential", "apartments"].includes(type) ? "exata" : wanted === "bairro" ? "bairro" : "rua";
@@ -120,8 +121,15 @@ export async function geocodePlace(text: string): Promise<{ lat: number; lng: nu
   if (t.length < 3) return null;
   const centre = await bairroCentre(t);
   if (centre) return { lat: centre.lat, lng: centre.lng, label: t };
-  const res = await nominatim({ q: `${t}, Belo Horizonte, Minas Gerais` });
-  const hit = toHit(res?.[0], "rua");
+  // First inside BH; then the metropolitan area (Nova Lima, Contagem...), keeping the city the owner typed.
+  const inBh = toHit((await nominatim({ q: `${t}, Belo Horizonte, Minas Gerais` }))?.[0], "rua");
+  const hit =
+    inBh ??
+    toHit(
+      (await nominatim({ q: `${t}, Minas Gerais`, viewbox: `${RMBH_BBOX.west},${RMBH_BBOX.north},${RMBH_BBOX.east},${RMBH_BBOX.south}` }))?.[0],
+      "rua",
+      true,
+    );
   return hit ? { lat: hit.lat, lng: hit.lng, label: hit.displayName?.split(",").slice(0, 2).join(",") ?? t } : null;
 }
 
