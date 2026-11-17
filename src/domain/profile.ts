@@ -56,6 +56,11 @@ export const profileSchema = z.object({
   savingsCents: z.int().min(0).max(10_000_000_000).nullable().default(null),
   /** Share of income a bank usually accepts for the installment (Brazil: ~30%). */
   maxInstallmentPct: z.number().min(10).max(50).default(30),
+  /** Notify new offers that fit the profile (grade, commute limit, budget) once per property and mode. */
+  alerts: z.boolean().default(true),
+  alertGrade: z.enum(["A", "B"]).default("B"),
+  /** Set when the profile is saved: commutes older than this are recomputed. */
+  updatedAt: z.string().max(40).nullable().default(null),
   /** Weights of the grade (they are normalised to 100). */
   weights: z.object({
     preco: z.int().min(0).max(100).default(40),
@@ -75,6 +80,9 @@ export function parseProfile(raw: unknown): Profile {
   const partial = profileSchema.safeParse({ ...(typeof raw === "object" && raw ? raw : {}), workplaces: [] });
   return partial.success ? partial.data : DEFAULT_PROFILE;
 }
+
+/** Highest monthly rent total the household targets (income × max share), or null without income. */
+export const rentBudgetCents = (p: Profile) => (p.monthlyIncomeCents ? Math.round((p.monthlyIncomeCents * p.maxInstallmentPct) / 100) : null);
 
 /** Workplaces that can be routed (geocoded). */
 export const locatedWorkplaces = (p: Profile) => p.workplaces.filter((w): w is Workplace & { lat: number; lng: number } => w.lat != null && w.lng != null);

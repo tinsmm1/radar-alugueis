@@ -48,6 +48,8 @@ export function ProfileForm({ profile }: { profile: Profile }) {
   const [savings, setSavings] = useState(reais(profile.savingsCents));
   const [maxPct, setMaxPct] = useState(String(profile.maxInstallmentPct));
   const [weights, setWeights] = useState<Record<WeightKey, number>>(profile.weights);
+  const [alerts, setAlerts] = useState(profile.alerts);
+  const [alertGrade, setAlertGrade] = useState<"A" | "B">(profile.alertGrade);
   const total = WEIGHT_KEYS.reduce((s, k) => s + weights[k], 0);
 
   const submit = () =>
@@ -63,10 +65,12 @@ export function ProfileForm({ profile }: { profile: Profile }) {
         savingsCents: cents(savings),
         maxInstallmentPct: Number(maxPct) || 30,
         weights,
+        alerts,
+        alertGrade,
       });
       if (!res.ok) return void toast.error(res.error);
       setWps((cur) => cur.map((w, i) => ({ ...w, id: res.data.workplaces[i]?.id, lat: String(res.data.workplaces[i]?.lat ?? ""), lng: String(res.data.workplaces[i]?.lng ?? "") })));
-      toast.success("Perfil salvo. Clique em Recalcular agora para atualizar deslocamentos e notas, ou aguarde a próxima coleta.");
+      toast.success("Perfil salvo. Deslocamentos e notas estão sendo recalculados em segundo plano (o que faltar segue na próxima coleta).");
       router.refresh();
     });
   const recalculate = () =>
@@ -118,6 +122,18 @@ export function ProfileForm({ profile }: { profile: Profile }) {
           ))}
         </div>
         <p className="text-xs text-muted-foreground">O risco geográfico continua fora da nota (aparece sempre ao lado). Sem locais cadastrados, o peso do deslocamento é redistribuído.</p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border p-3">
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" className="size-4 accent-[var(--primary)]" checked={alerts} onChange={(e) => setAlerts(e.target.checked)} />
+          Avisar quando surgir oportunidade para o meu perfil
+        </label>
+        <select aria-label="Nota mínima do aviso" className="h-8 rounded-md border bg-transparent px-2 text-sm" value={alertGrade} disabled={!alerts} onChange={(e) => setAlertGrade(e.target.value as "A" | "B")}>
+          <option value="B">nota B ou melhor</option>
+          <option value="A">só nota A</option>
+        </select>
+        <p className="w-full text-xs text-muted-foreground">Imóveis novos (últimos 7 dias), dentro do seu tempo máximo e do seu orçamento. Um aviso por imóvel, no app, por e-mail e Telegram.</p>
       </div>
 
       <div className="flex flex-wrap gap-2">

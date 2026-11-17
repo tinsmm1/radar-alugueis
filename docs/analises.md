@@ -53,6 +53,14 @@ Com perfil cadastrado, a nota soma cinco partes, com os seus pesos (padrão entr
 | Serviços e transporte (18) | Metrô/BRT, supermercado, farmácia, parque e hospital a distâncias de caminhada (OpenStreetMap). |
 | Imóvel e dados (10) | Vaga, características, endereço confirmado, mais de uma fonte. |
 
+Proteções da nota (auditoria de nov/2026):
+
+- **Tamanho da amostra.** Com poucos comparáveis o efeito do preço é reduzido: 5 imóveis valem 75%, 10 ou mais valem 100%; a comparação pela regional (menos específica) vale 15% menos. A tela avisa quando isso acontece.
+- **Preço bom demais.** 35% ou mais abaixo da mediana dos parecidos não ganha ponto extra (a parte fica limitada a 40 de 50), vira ponto de atenção (erro no anúncio, imóvel em mau estado ou golpe) e reduz a confiança.
+- **Condomínio por m².** Comparado com os parecidos: 30% acima vira ponto de atenção e, na compra, tira 2 pontos do rendimento; 20% abaixo é ponto forte.
+- **Imóvel sem localização** quando você tem locais cadastrados: o deslocamento conta como neutro (metade da parte) e a confiança cai, para a nota continuar comparável com os outros imóveis.
+- **O que mais pesou.** Cada nota mostra as partes que mais puxaram para cima e para baixo.
+
 Sem locais cadastrados, a nota usa os pesos clássicos (50/15/25/10). O **risco geográfico** (inundação, deslizamento, enxurrada) aparece sempre ao lado da nota e **nunca** entra nela. Dado que falta conta como neutro e reduz a confiança.
 
 ## 4. Plano de proposta (negociação)
@@ -62,7 +70,10 @@ Em cada imóvel, a seção *Negociação e decisão* sugere **abrir com**, **met
 - margem de base de 4% na compra e 2% no aluguel (suposições, não pesquisa de mercado);
 - soma margem quando o preço está acima da mediana dos parecidos, quando o anúncio está há 60 ou 120 dias no ar e quando já houve redução;
 - reduz a margem e recomenda **decidir rápido** quando o preço já está 10% ou mais abaixo dos parecidos;
-- o **teto** é o valor justo pela mediana dos parecidos, nunca acima do pedido.
+- o **teto** é o valor justo pela mediana dos parecidos, nunca acima do pedido;
+- o tempo conta a partir de quando o Radar viu o anúncio pela primeira vez (pode estar no ar há mais tempo).
+
+Ao acompanhar o preço de um imóvel, o Radar oferece usar a **meta do plano** como preço-alvo (no aluguel, meta do aluguel + condomínio e IPTU).
 
 ## 5. Cabe no orçamento?
 
@@ -83,7 +94,14 @@ No **Guia de decisão** (menu *Guia*), regionais e bairros são comparados pelos
 
 A **nota da região** combina preço por m² frente às outras áreas (40), tempo até o trabalho (35) e qualidade das ofertas (25). Áreas com menos de 3 imóveis ficam sem nota. A **estrela de melhor posição** marca as áreas da fronteira de Pareto: nenhuma outra é ao mesmo tempo mais barata por m² e mais perto do trabalho. É ali que está o melhor equilíbrio entre pagar menos e perder menos tempo.
 
-## 7. O Guia de decisão, passo a passo
+## 7. Automação
+
+- **Recalcular sozinho:** ao salvar o perfil, deslocamentos e notas são recalculados em segundo plano logo depois da resposta; o que não couber continua na próxima coleta. O botão *Recalcular agora* continua disponível.
+- **Oportunidade para o seu perfil:** a cada coleta, imóveis reais novos (últimos 7 dias) com nota B ou melhor (ou só A, se preferir), dentro do seu tempo máximo e do seu orçamento, geram um aviso no app, por e-mail e Telegram. Um aviso por imóvel e modo, no máximo 10 por coleta. Precisa de locais ou renda/reserva cadastrados.
+- **Cota da TomTom bem usada:** os imóveis sem tempo calculado vêm primeiro e, entre eles, os de melhor nota; quando a cota do dia acaba, o Radar para de consultar até o dia seguinte e usa o modelo. Depois, trajetos estimados pelo modelo são refeitos com trânsito real, das melhores notas para as piores, sem segurar a coleta.
+- **Orçamento de aluguel:** com a renda informada, o Guia filtra os imóveis para alugar por renda × % máxima.
+
+## 8. O Guia de decisão, passo a passo
 
 1. **Seu perfil e seus limites** (locais, tempo máximo, preço máximo hoje).
 2. **Onde procurar:** regionais comparadas.

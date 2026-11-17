@@ -27,19 +27,25 @@ const responseSchema = z.object({
 });
 
 export const tomtomEnabled = () => Boolean(optionalEnv("TOMTOM_API_KEY"));
+/** Per-run state: once the daily budget is used up, no more counter writes or requests this run. */
+export type TomtomBudget = { exhausted: boolean };
 export const tomtomRoutes = (mode: CommuteMode) => Boolean(TRAVEL_MODE[mode]);
 
 /** One trip, or null when unavailable (no key, mode not routed, budget used up, error). */
-export async function tomtomTrip(from: { lat: number; lng: number }, to: { lat: number; lng: number }, mode: CommuteMode, departAt: string, direction: Trip["direction"], at: string): Promise<Trip | null> {
+export async function tomtomTrip(from: { lat: number; lng: number }, to: { lat: number; lng: number }, mode: CommuteMode, departAt: string, direction: Trip["direction"], at: string, state: TomtomBudget = { exhausted: false }): Promise<Trip | null> {
   const key = optionalEnv("TOMTOM_API_KEY");
   const travelMode = TRAVEL_MODE[mode];
-  if (!key || !travelMode) return null;
-  const budget = Number(optionalEnv("TOMTOM_DAILY_BUDGET") ?? 2000);
-  if (!(await hit(`tomtom:${new Date().toISOString().slice(0, 10)}`, budget, 86_400))) return null;
+  if (!key || !travelMode || state.exhausted) return null;
+  const limit = Number(optionalEnv("TOMTOM_DAILY_BUDGET") ?? 2000);
+  if (!(await hit(`tomtom:${new Date().toISOString().slice(0, 10)}`, limit, 86_400))) {
+    state.exhausted = true;
+    return null;
+  }
   const path = `${from.lat.toFixed(6)},${from.lng.toFixed(6)}:${to.lat.toFixed(6)},${to.lng.toFixed(6)}`;
   const qs = new URLSearchParams({ key, departAt, traffic: "true", travelMode, routeType: "fastest", computeTravelTimeFor: "all", routeRepresentation: "summaryOnly" });
   try {
     const res = await safeFetch(`https://api.tomtom.com/routing/1/calculateRoute/${path}/json?${qs}`, { accept: "application/json", timeoutMs: 12_000, maxBytes: 512 * 1024, allowRedirectTo: () => false });
+    if (res.status === 403 || res.status === 429) state.exhausted = true; // key refused or quota reached upstream
     if (res.status !== 200) {
       logger.warn({ status: res.status }, "tomtom route failed");
       return null;

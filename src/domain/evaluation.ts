@@ -35,6 +35,10 @@ export type EvalInput = {
   /** Commute to the owner's workplaces at their times (null/absent = no workplace configured). */
   commute?: CommuteSummary | null;
   maxCommuteMin?: number;
+  /** Profile has located workplaces: a missing commute (property not located) is neutral and lowers confidence. */
+  expectCommute?: boolean;
+  /** Condo fee per m² against comparables: positive = below the median (%). */
+  condoVsMedianPct?: number | null;
   /** Normalised weights (sum 100) from the owner's profile; absent = classic weights 50/15/25/10. */
   weights?: Record<WeightKey, number>;
   /** Negotiation plan, carried in the stored evaluation for the property page. */
@@ -60,6 +64,18 @@ export type Evaluation = {
 
 export const GRADE_LABEL: Record<Grade, string> = { A: "Excelente", B: "Boa", C: "Na média", D: "Abaixo da média", E: "Fraca" };
 export const CONFIDENCE_LABEL: Record<Evaluation["confidence"], string> = { alta: "Confiança alta", media: "Confiança média", baixa: "Confiança baixa" };
+/** Price beyond this (% below the comparables' median) is suspicious: possible error, bad condition or scam. */
+export const SUSPICIOUS_BELOW_PCT = 35;
+
+/**
+ * How much the comparison can be trusted: 5 comparables → 0.75, 10 or more → 1; a regional
+ * (less specific) scope counts 15% less. The price effect is shrunk toward neutral by it.
+ */
+export function comparableReliability(n: number, scope: EvalInput["comparableScope"]): number {
+  const base = Math.min(1, Math.max(0.5, 0.5 + n / 20));
+  return Math.round(base * (scope === "bairro" || scope == null ? 1 : 0.85) * 100) / 100;
+}
+
 export const EVALUATION_NOTE =
   "Nota automática que compara o anúncio com imóveis parecidos coletados pelo Radar e resume as bases geográficas consultadas. Não é avaliação imobiliária, laudo nem vistoria.";
 
@@ -95,12 +111,19 @@ export function evaluate(i: EvalInput): Evaluation {
     unknowns++;
     cons.push("Ainda não há imóveis comparáveis suficientes para avaliar o preço.");
   } else {
-    price = clamp(25 + i.priceVsMedianPct * 1.25, 0, 50);
+    const rel = comparableReliability(i.comparables, i.comparableScope);
+    price = clamp(25 + i.priceVsMedianPct * 1.25 * rel, 0, 50);
     const where = SCOPE_TEXT[i.comparableScope ?? "regional"];
     const p = Math.abs(Math.round(i.priceVsMedianPct));
-    if (i.priceVsMedianPct >= 5) pros.push(`${unit} ${p}% abaixo da mediana de ${i.comparables} imóveis parecidos ${where}.`);
+    if (i.priceVsMedianPct >= SUSPICIOUS_BELOW_PCT) {
+      // Too good to be true: do not reward fully, and say why.
+      price = Math.min(price, 40);
+      unknowns++;
+      cons.push(`${unit} ${p}% abaixo da mediana dos parecidos: muito fora do padrão. Confirme área, estado de conservação e documentação (pode ser erro no anúncio ou golpe).`);
+    } else if (i.priceVsMedianPct >= 5) pros.push(`${unit} ${p}% abaixo da mediana de ${i.comparables} imóveis parecidos ${where}.`);
     else if (i.priceVsMedianPct <= -5) cons.push(`${unit} ${p}% acima da mediana de ${i.comparables} imóveis parecidos ${where}.`);
     else pros.push(`${unit} alinhado à mediana de ${i.comparables} imóveis parecidos ${where}.`);
+    if (rel < 0.85) cons.push(`Comparação com poucos imóveis (${i.comparables}): o peso do preço na nota foi reduzido.`);
   }
   if (i.recentDropBp != null && i.recentDropBp >= 100) {
     price = Math.min(50, price + 4);
@@ -135,8 +158,12 @@ export function evaluate(i: EvalInput): Evaluation {
       pts = 1;
       cons.push(`Rendimento bruto estimado baixo: ${pctBp(i.yieldBp)} ao ano.`);
     }
+    if (i.condoVsMedianPct != null && i.condoVsMedianPct <= -30) pts = Math.max(0, pts - 2);
+    else if (i.condoVsMedianPct != null && i.condoVsMedianPct >= 20) pts = Math.min(10, pts + 1);
     second = { key: "rendimento", label: "Rendimento estimado", points: pts, max: 10 };
   }
+  if (i.condoVsMedianPct != null && i.condoVsMedianPct <= -30) cons.push(`Condomínio por m² ${Math.round(-i.condoVsMedianPct)}% acima dos parecidos: pesa no custo mensal.`);
+  else if (i.condoVsMedianPct != null && i.condoVsMedianPct >= 20) pros.push(`Condomínio por m² ${Math.round(i.condoVsMedianPct)}% abaixo dos parecidos.`);
 
   // Geographic risk is informative only (owner decision): it never changes the grade.
   let riskNote: string | null = null;
@@ -186,6 +213,11 @@ export function evaluate(i: EvalInput): Evaluation {
 
   // Commute to the owner's workplaces (only when a profile with located workplaces exists).
   let commuteF: number | null = null;
+  if (!i.commute && i.expectCommute) {
+    commuteF = 0.5;
+    unknowns++;
+    cons.push("Sem localização exata para calcular o tempo até o trabalho (conta como neutro).");
+  }
   if (i.commute) {
     commuteF = commuteFraction(i.commute, i.maxCommuteMin ?? 45);
     const notes = commuteNotes(i.commute, i.maxCommuteMin ?? 45);
@@ -218,6 +250,13 @@ export function evaluate(i: EvalInput): Evaluation {
     ? { avgOneWayMin: i.commute.avgOneWayMin, worstOneWayMin: i.commute.worstOneWayMin, worstName: i.commute.worstName, monthlyHours: i.commute.monthlyHours, monthlyCostCents: i.commute.monthlyCostCents, monthlyTimeCostCents: i.commute.monthlyTimeCostCents, method: i.commute.method }
     : null;
   return { score, grade, label: GRADE_LABEL[grade], confidence: unknowns === 0 ? "alta" : unknowns === 1 ? "media" : "baixa", parts, pros, cons, riskNote, commute, negotiation: i.negotiation ?? null };
+}
+
+/** Parts that pulled the grade up or down the most (points above or below half of each part). */
+export function drivers(e: Pick<Evaluation, "parts">): { up: EvalPart[]; down: EvalPart[] } {
+  const delta = (p: EvalPart) => p.points - p.max / 2;
+  const sorted = [...e.parts].sort((a, b) => delta(b) - delta(a));
+  return { up: sorted.filter((p) => delta(p) >= p.max * 0.15).slice(0, 2), down: sorted.reverse().filter((p) => delta(p) <= -p.max * 0.15).slice(0, 2) };
 }
 
 /** Integer maxima that keep the weights' proportions and add up to exactly 100. */

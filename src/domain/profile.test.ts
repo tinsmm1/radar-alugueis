@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PROFILE, newWorkplaceId, normalisedWeights, parseProfile, workplaceSignature } from "./profile";
+import { DEFAULT_PROFILE, newWorkplaceId, normalisedWeights, parseProfile, rentBudgetCents, workplaceSignature } from "./profile";
 
 describe("profile", () => {
   it("empty or broken JSON falls back to defaults", () => {
@@ -16,5 +16,12 @@ describe("profile", () => {
     expect(newWorkplaceId("Escritório Centro", 0.5)).toMatch(/^escritorio-centro-[a-z0-9]{4,}$/);
     const w = { id: "a-001", name: "A", address: "x", lat: -19.9, lng: -43.9, mode: "carro" as const, departure: "08:00", returnAt: "18:00", days: [1], weight: 5 };
     expect(workplaceSignature(w)).not.toBe(workplaceSignature({ ...w, departure: "07:30" }));
+  });
+});
+
+describe("rent budget", () => {
+  it("is income × max share, or null without income", () => {
+    expect(rentBudgetCents(DEFAULT_PROFILE)).toBeNull();
+    expect(rentBudgetCents({ ...DEFAULT_PROFILE, monthlyIncomeCents: 1_000_000 })).toBe(300_000);
   });
 });

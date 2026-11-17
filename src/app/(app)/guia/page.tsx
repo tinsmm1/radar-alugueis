@@ -56,7 +56,7 @@ export default async function GuidePage({ searchParams }: PageProps<"/guia">) {
           </div>
           <div className="rounded-xl border p-3">
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Wallet className="size-3.5" /> {buy ? "Preço máximo hoje" : "Orçamento"}</p>
-            <p className="text-sm font-medium">{buy ? (g.maxPriceCents != null ? `${brl(g.maxPriceCents)} (limitado pela ${g.limitedBy})` : "Informe renda e reserva") : "Use os filtros de custo total na busca"}</p>
+            <p className="text-sm font-medium">{buy ? (g.maxPriceCents != null ? `${brl(g.maxPriceCents)} (limitado pela ${g.limitedBy})` : "Informe renda e reserva") : g.rentBudgetCents != null ? `até ${brl(g.rentBudgetCents)}/mês de custo total` : "Informe a renda no perfil"}</p>
           </div>
           <div className="flex items-center rounded-xl border border-dashed p-3 text-sm">
             <Link href="/admin/perfil" className="font-medium text-primary hover:underline">Editar perfil, horários e pesos da nota →</Link>
@@ -71,10 +71,11 @@ export default async function GuidePage({ searchParams }: PageProps<"/guia">) {
       <Step n={3} icon={Scale} title="Melhores posições entre os bairros" description={g.hasWorkplaces ? "A estrela marca bairros que nenhum outro supera ao mesmo tempo em preço por m² e em tempo até o trabalho: é aí que está o melhor equilíbrio entre pagar menos e perder menos tempo." : "Cadastre seus locais de trabalho para ver a fronteira preço × tempo de deslocamento."}>
         {frontier.length > 0 && <p className="mb-3 text-sm"><b>Fronteira preço × deslocamento:</b> {frontier.map((b) => b.area).join(", ")}.</p>}
         <RegionTable rows={g.bairros.slice(0, 20)} kind="bairro" mode={mode} hasCommute={g.hasWorkplaces} />
+        <p className="mt-3 text-sm"><Link href={`/bairros?modo=${mode}`} className="font-medium text-primary hover:underline">Análise completa de todos os bairros (infraestrutura, transporte e risco) →</Link></p>
       </Step>
 
       <Step n={4} icon={Sparkles} title="Os imóveis que valem a visita" description={`Ordenados pela nota do Radar com os seus pesos. ${EVALUATION_NOTE}`}>
-        <h3 className="mb-2 text-sm font-medium">Dentro dos seus limites{g.hasWorkplaces ? ` (até ${g.maxCommuteMin} min)` : ""}{buy && g.maxPriceCents != null ? ` e até ${brl(g.maxPriceCents)}` : ""}</h3>
+        <h3 className="mb-2 text-sm font-medium">Dentro dos seus limites{g.hasWorkplaces ? ` (até ${g.maxCommuteMin} min)` : ""}{buy && g.maxPriceCents != null ? ` e até ${brl(g.maxPriceCents)}` : ""}{!buy && g.rentBudgetCents != null ? ` e até ${brl(g.rentBudgetCents)}/mês` : ""}</h3>
         <PickList picks={g.fitPicks} mode={mode} empty="Nenhum imóvel avaliado cabe nos seus limites agora. Ajuste o perfil ou crie um alerta na busca para ser avisado." />
         <h3 className="mt-5 mb-2 text-sm font-medium">Melhores notas no geral</h3>
         <PickList picks={g.picks} mode={mode} empty="As notas aparecem depois da primeira coleta." />

@@ -5,7 +5,7 @@ import { properties } from "@/db/schema";
 import type { Evaluation } from "@/domain/evaluation";
 import type { Mode } from "@/domain/listing";
 import { maxPriceFor } from "@/domain/affordability";
-import { locatedWorkplaces } from "@/domain/profile";
+import { locatedWorkplaces, rentBudgetCents } from "@/domain/profile";
 import { compareRegions, type RegionRow, type RegionStats } from "@/domain/regions";
 import { getProfile } from "../profile";
 
@@ -24,6 +24,8 @@ export type Guide = {
   maxCommuteMin: number;
   maxPriceCents: number | null;
   limitedBy: "renda" | "reserva" | null;
+  /** Renting: income × max share (monthly total), when income is known. */
+  rentBudgetCents: number | null;
   picks: GuidePick[];
   /** Best picks within the commute limit and, for buying, within the budget. */
   fitPicks: GuidePick[];
@@ -43,24 +45,31 @@ export async function guideData(mode: Mode): Promise<Guide> {
   const p = properties;
   const [{ real }] = (await db.select({ real: sql<number>`count(*) filter (where not ${p.isDemo})::int` }).from(p).where(and(eq(p.status, "ativo"), buy ? eq(p.forSale, true) : eq(p.forRent, true)))) as Array<{ real: number }>;
   const demo = !real;
+  const score = buy ? p.saleEvalScore : p.rentEvalScore;
+  const priceCol = buy ? p.salePriceCents : sql<number | null>`coalesce(${p.totalCents}, ${p.rentCents})`;
+  const scope = and(eq(p.status, "ativo"), buy ? eq(p.forSale, true) : eq(p.forRent, true), eq(p.isDemo, demo));
+  // Light rows for the region comparison (no JSON); the heavy evaluation only for the picks.
   const rows = await db
-    .select({
-      id: p.id, title: p.title, neighborhood: p.neighborhood, regional: p.regional, photo: p.photo, areaM2: p.areaM2, bedrooms: p.bedrooms,
-      priceCents: buy ? p.salePriceCents : p.totalCents, rentCents: p.rentCents, priceM2Cents: buy ? p.salePriceM2Cents : p.costPerM2Cents, yieldBp: p.grossYieldBp,
-      commuteMinutes: p.commuteMinutes, score: buy ? p.saleEvalScore : p.rentEvalScore, evaluation: buy ? p.saleEval : p.rentEval,
-      riskLevel: p.riskLevel, floodLevel: p.floodLevel, isDemo: p.isDemo,
-    })
+    .select({ regional: p.regional, neighborhood: p.neighborhood, priceM2Cents: buy ? p.salePriceM2Cents : p.costPerM2Cents, yieldBp: p.grossYieldBp, commuteMinutes: p.commuteMinutes, score, riskLevel: p.riskLevel, floodLevel: p.floodLevel })
     .from(p)
-    .where(and(eq(p.status, "ativo"), buy ? eq(p.forSale, true) : eq(p.forRent, true), eq(p.isDemo, demo)))
-    .orderBy(desc(sql`coalesce(${buy ? p.saleEvalScore : p.rentEvalScore}, -1)`))
-    .limit(5000);
+    .where(scope)
+    .limit(20_000);
 
-  const picks: GuidePick[] = rows.map((r) => ({ ...r, priceCents: r.priceCents ?? r.rentCents, evaluation: (r.evaluation ?? null) as Evaluation | null }));
   const max = maxPriceFor(profile);
+  const rentMax = rentBudgetCents(profile);
+  const budget = buy ? max.cents : rentMax;
   const hasWorkplaces = locatedWorkplaces(profile).length > 0;
-  const fits = (x: GuidePick) =>
-    (!hasWorkplaces || (x.commuteMinutes != null && x.commuteMinutes <= profile.maxCommuteMin)) &&
-    (!buy || max.cents == null || (x.priceCents != null && x.priceCents <= max.cents));
+  const pickColumns = {
+    id: p.id, title: p.title, neighborhood: p.neighborhood, regional: p.regional, photo: p.photo, areaM2: p.areaM2, bedrooms: p.bedrooms,
+    priceCents: priceCol, priceM2Cents: buy ? p.salePriceM2Cents : p.costPerM2Cents, yieldBp: p.grossYieldBp, commuteMinutes: p.commuteMinutes,
+    score, evaluation: buy ? p.saleEval : p.rentEval, riskLevel: p.riskLevel, isDemo: p.isDemo,
+  };
+  const order = [desc(sql`coalesce(${score}, -1)`), p.id];
+  const toPick = (r: Record<string, unknown>) => ({ ...r, evaluation: (r.evaluation ?? null) as Evaluation | null }) as GuidePick;
+  const [top, fit] = await Promise.all([
+    db.select(pickColumns).from(p).where(scope).orderBy(...order).limit(9),
+    db.select(pickColumns).from(p).where(and(scope, hasWorkplaces ? sql`${p.commuteMinutes} <= ${profile.maxCommuteMin}` : undefined, budget != null ? sql`${priceCol} <= ${budget}` : undefined)).orderBy(...order).limit(9),
+  ]);
 
   const regionRows = (key: "regional" | "neighborhood"): RegionRow[] =>
     rows.map((r) => ({
@@ -70,9 +79,9 @@ export async function guideData(mode: Mode): Promise<Guide> {
   const opts = { maxCommuteMin: profile.maxCommuteMin, mode };
   return {
     mode, demo, total: rows.length, hasWorkplaces, workplaces: profile.workplaces.length, maxCommuteMin: profile.maxCommuteMin,
-    maxPriceCents: max.cents, limitedBy: max.limitedBy,
-    picks: picks.slice(0, 9),
-    fitPicks: picks.filter(fits).slice(0, 9),
+    maxPriceCents: max.cents, limitedBy: max.limitedBy, rentBudgetCents: rentMax,
+    picks: top.map(toPick),
+    fitPicks: fit.map(toPick),
     regionais: compareRegions(regionRows("regional"), opts),
     bairros: compareRegions(regionRows("neighborhood"), opts).slice(0, 40),
   };

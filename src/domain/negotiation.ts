@@ -12,6 +12,7 @@ export type NegotiationInput = {
   askingCents: number | null;
   /** Price per m² against the comparables' median: positive = below the median (%). */
   priceVsMedianPct: number | null;
+  /** Days since the Radar first saw the offer (a lower bound of the time on the market). */
   daysOnMarket: number;
   /** Total cut since first seen (bp), if any. */
   totalDropBp: number | null;
@@ -58,11 +59,11 @@ export function negotiation(i: NegotiationInput): Negotiation | null {
   if (i.daysOnMarket >= 120) {
     d += buy ? 4 : 3;
     lever += 2;
-    reasons.push(`Anunciado há ${i.daysOnMarket} dias: o vendedor tende a aceitar propostas.`);
+    reasons.push(`No Radar há ${i.daysOnMarket} dias sem fechar: o anunciante tende a aceitar propostas.`);
   } else if (i.daysOnMarket >= 60) {
     d += 2;
     lever += 1;
-    reasons.push(`Anunciado há ${i.daysOnMarket} dias, acima do comum para uma boa oferta.`);
+    reasons.push(`No Radar há ${i.daysOnMarket} dias, mais que o comum para uma boa oferta.`);
   } else if (i.daysOnMarket <= 7) reasons.push("Anúncio novo: o anunciante ainda não sentiu o mercado.");
 
   if (i.totalDropBp != null && i.totalDropBp >= 100) {

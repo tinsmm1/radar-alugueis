@@ -1,7 +1,9 @@
 "use server";
+import { after } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
+import { logger } from "@/lib/logger";
 import { settings } from "@/db/schema";
 import { insideBh } from "@/domain/geo";
 import { newWorkplaceId, parseProfile, profileSchema, workplaceSchema, type Workplace } from "@/domain/profile";
@@ -20,10 +22,21 @@ const inputSchema = profileSchema.extend({
 /** Near Belo Horizonte (metropolitan area): a generous box around the city. */
 const nearBh = (lat: number, lng: number) => insideBh(lat, lng) || (lat > -20.4 && lat < -19.5 && lng > -44.4 && lng < -43.5);
 
+/** Commutes (up to the deadline) and then every grade with the current profile, under the run lock. */
+async function recompute(budgetMs: number) {
+  const deadline = Date.now() + budgetMs;
+  return withRunLock("collect", async () => {
+    const c = await refreshCommutes(deadline);
+    const o = await refreshOpportunities();
+    return { commutes: c.updated, remaining: c.remaining, graded: o.withSignals };
+  });
+}
+
 /**
  * Saves the decision profile. Workplaces whose address changed (or that have no coordinates)
  * are geocoded; the owner may also type coordinates. Cached trips of removed workplaces are
- * dropped; the next run (or "Recalcular agora") recomputes commutes and grades.
+ * dropped. Commutes and grades are then recomputed automatically after the response (`after`);
+ * what does not fit continues in the next scheduled run.
  */
 export async function saveProfile(input: z.input<typeof inputSchema>) {
   return runAction("saveProfile", async () => {
@@ -43,9 +56,17 @@ export async function saveProfile(input: z.input<typeof inputSchema>) {
       if (lat == null || lng == null || !nearBh(lat, lng)) throw new ActionError(`"${w.name}" ficou fora da região de Belo Horizonte. Confira o endereço ou as coordenadas.`);
       workplaces.push({ ...w, id: w.id ?? newWorkplaceId(w.name), lat, lng });
     }
-    const profile = profileSchema.parse({ ...v, workplaces });
+    const profile = profileSchema.parse({ ...v, workplaces, updatedAt: new Date().toISOString() });
     await getDb().update(settings).set({ profile, updatedAt: new Date() }).where(eq(settings.id, 1));
     await pruneTrips(workplaces.map((w) => w.id));
+    after(async () => {
+      try {
+        const r = await recompute(40_000);
+        if (r === BUSY) logger.info("profile recompute deferred: a run is in progress");
+      } catch (err) {
+        logger.warn({ msg: (err as Error).message.slice(0, 200) }, "profile recompute failed");
+      }
+    });
     return { workplaces: workplaces.map((w) => ({ id: w.id, lat: w.lat, lng: w.lng })) };
   }, "/");
 }
@@ -53,13 +74,8 @@ export async function saveProfile(input: z.input<typeof inputSchema>) {
 /** Recomputes commutes (up to ~45 s) and then every grade with the new profile. */
 export async function recalcProfileNow() {
   return runAction("recalcProfileNow", async () => {
-    const deadline = Date.now() + 45_000;
-    const result = await withRunLock("collect", async () => {
-      const c = await refreshCommutes(deadline);
-      const o = await refreshOpportunities();
-      return { commutes: c.updated, remaining: c.remaining, graded: o.withSignals };
-    });
-    if (result === BUSY) throw new ActionError("Uma coleta está em andamento. Tente de novo em alguns minutos.");
+    const result = await recompute(45_000);
+    if (result === BUSY) throw new ActionError("Uma coleta ou recálculo está em andamento. Tente de novo em alguns minutos.");
     return result;
   }, "/");
 }

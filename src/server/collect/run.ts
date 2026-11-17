@@ -10,6 +10,7 @@ import { loadOsmStep } from "../geo/osm";
 import { loadRegionais } from "../geo/regionais";
 import { loadSgbLayer } from "../geo/sgb";
 import { checkPriceTargets } from "../notify/events";
+import { profileMatches } from "../notify/profile-alerts";
 import { deliverPending } from "../notify/deliver";
 import { ADAPTERS } from "../sources/registry";
 import { refreshOpportunities } from "./opportunities";
@@ -107,6 +108,7 @@ async function work(stage: Stage, runId: number, deadline: number, stats: Record
     }
     case "notificar": {
       stats.precoAlvo = await checkPriceTargets();
+      stats.perfil = await profileMatches();
       const r = await deliverPending();
       stats.emails = r.email;
       stats.telegram = r.telegram;

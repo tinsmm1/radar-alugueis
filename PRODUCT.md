@@ -110,6 +110,9 @@ Decision guide and commute:
 24. With workplaces, the grade gains a "Tempo até o trabalho" part and follows the owner's weights; search sorts by "Mais perto do trabalho" and filters by maximum commute; geographic risk still never enters the grade.
 25. The property page shows the real monthly cost of living there (housing + transport + time), a negotiation plan (opening, target, ceiling) with its reasons, whether it fits the household budget and a due-diligence checklist.
 26. The decision guide compares regionais and bairros (price per m² spread, commute, yield, good offers, flood share), marks the price × commute Pareto frontier and lists the best offers within the owner's limits.
+27. The grade shrinks the price effect when there are few comparables, flags prices ≥ 35% below the median as suspicious (capped, lower confidence), compares the condo fee per m², keeps the commute part neutral for a property without location, and shows what pulled the grade up and down.
+28. Saving the profile recomputes commutes and grades automatically; each run notifies new real offers that fit the profile (grade, commute limit, budget) once per property and mode, at most 10 per run and mode.
+29. TomTom requests go first to properties without a commute and to the best-graded offers; the run stops calling TomTom once the daily budget is used; model trips are upgraded later without holding the run.
 
 Technical: lint, typed lint, rule self-check, typecheck, unit, PostGIS integration and E2E tests pass; the toolkit checks recorded in `docs/quality.md` pass.
 

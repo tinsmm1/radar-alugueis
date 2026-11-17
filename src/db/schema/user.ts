@@ -69,7 +69,7 @@ export const notifications = pgTable(
   "notifications",
   {
     id: serial("id").primaryKey(),
-    kind: text("kind").notNull(), // novo | baixa_preco | preco_alvo | indisponivel | voltou | fonte_falhou
+    kind: text("kind").notNull(), // novo | baixa_preco | preco_alvo | perfil | indisponivel | voltou | fonte_falhou
     propertyId: integer("property_id").references(() => properties.id, { onDelete: "cascade" }),
     savedSearchId: integer("saved_search_id").references(() => savedSearches.id, { onDelete: "cascade" }),
     /** Dedup key: one notification per kind/property/search/day. */

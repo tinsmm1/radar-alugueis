@@ -75,9 +75,12 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
   const hasProfile = locatedWorkplaces(profile).length > 0;
   const storedCommute = hasProfile ? ((p.commute ?? null) as CommuteSummary | null) : null;
   const commute = storedCommute ?? (hasProfile && p.lat != null && p.lng != null ? quickCommute(profile, { lat: p.lat, lng: p.lng }) : null);
+  const evaluation = ((buy ? p.saleEval : p.rentEval) ?? null) as Evaluation | null;
+  // The plan negotiates the rent (or the asking price); a rent watch follows the monthly total.
+  const plan = evaluation?.negotiation ?? null;
+  const watchTarget = plan ? (buy ? plan.targetCents : plan.targetCents + Math.max(0, (p.totalCents ?? p.rentCents ?? 0) - (p.rentCents ?? 0))) : null;
   const housingMonthly = buy ? (p.salePriceCents != null ? buyAffordability(p.salePriceCents, p.condoCents, p.iptuMonthlyCents, profile).housingMonthlyCents : null) : (p.totalCents ?? p.rentCents);
   const similarFavs = await favoriteIds(similar.map((s) => s.id));
-  const evaluation = ((buy ? p.saleEval : p.rentEval) ?? null) as Evaluation | null;
   const canonical = d.listings.find((l) => l.status !== "indisponivel" && l.rentCents != null && l.rentCents === p.rentCents) ?? d.listings[0];
   const title = cleanTitle(p.title) ?? (p.type ? TYPE_LABEL[p.type as PropertyType] : "Imóvel");
   const photos = [...new Set(d.listings.flatMap((l) => l.photos))];
@@ -209,7 +212,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             </p>
           </div>
           {(buy ? p.forSale : p.forRent) && p.status !== "indisponivel" && (
-            <PriceWatch propertyId={p.id} mode={mode} currentCents={buy ? p.salePriceCents : (p.totalCents ?? p.rentCents)} watch={watches.find((w) => w.mode === mode) ?? null} />
+            <PriceWatch propertyId={p.id} mode={mode} currentCents={buy ? p.salePriceCents : (p.totalCents ?? p.rentCents)} watch={watches.find((w) => w.mode === mode) ?? null} suggestedCents={watchTarget} />
           )}
           <RelatedLinks p={p} mode={mode} />
           {p.lat != null && p.lng != null ? (
