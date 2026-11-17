@@ -108,7 +108,7 @@ export async function refreshCommutes(deadline: number, max = 300): Promise<{ up
 /** Removes cached trips of workplaces that left the profile (called when the profile is saved). */
 export async function pruneTrips(workplaceIds: string[]): Promise<void> {
   const db = getDb();
-  if (!workplaceIds.length) await db.delete(commuteTrips);
+  if (!workplaceIds.length) await db.delete(commuteTrips).where(sql`true`); // no workplace left: drop every cached trip
   else await db.delete(commuteTrips).where(notInArray(commuteTrips.workplaceId, workplaceIds));
 }
 
