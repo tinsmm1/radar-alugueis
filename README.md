@@ -228,6 +228,17 @@ O **índice de risco (0–100)** resume tudo em *Baixo*, *Moderado*, *Atenção*
 - **Acompanhar preço.** Na página do imóvel, defina um **preço-alvo** (custo mensal no aluguel, preço na compra). Você é avisado a cada redução e quando o preço chega ao alvo, de novo só se cair mais. Favoritos e imóveis acompanhados recebem as reduções separadas por modo. A página de favoritos lista os preços acompanhados com a variação desde o início.
 - **Tudo ligado:** do imóvel para os parecidos, o bairro, o comparador e um alerta de parecidos; dos bairros para a busca; de cada aba de oportunidades para a busca completa ou para um alerta.
 
+<a id="guia"></a>
+
+### Guia de decisão, deslocamento no horário de pico e plano de proposta
+
+- **Perfil e trabalho (Administração).** Cadastre até 4 locais de trabalho ou estudo com **horário de ida e de volta**, dias da semana, meio de transporte e importância; o tempo máximo aceitável; o valor da sua hora e os custos de transporte; renda e reserva para comprar; e os **pesos de cada critério** na nota.
+- **Deslocamento real.** Para cada imóvel, ida e volta **nos seus horários**: com a chave grátis da TomTom (`TOMTOM_API_KEY`), carro, bicicleta e a pé usam o trânsito histórico daquele horário; sem ela, e sempre para ônibus/metrô, um modelo calibrado com o TomTom Traffic Index de BH e a velocidade dos ônibus informada pela PBH. Mostra horas por mês, gasto com transporte e o **custo real de morar ali** (moradia + transporte + tempo).
+- **Nota personalizada.** A nota passa a ter a parte **Tempo até o trabalho** e usa os seus pesos. Na busca: **Mais perto do trabalho** e o filtro **Tempo até o trabalho**.
+- **Negociação e decisão** em cada imóvel: plano de proposta (**abrir com, meta e teto**) a partir do preço frente aos parecidos, do tempo anunciado e das reduções; **cabe no orçamento?** (dinheiro na assinatura, parcela SAC × renda, preço máximo para o seu perfil); e a lista do que conferir antes de assinar.
+- **Guia de decisão** (menu *Guia*): seus limites → **regionais comparadas** → **melhores posições** entre os bairros (nenhum outro é ao mesmo tempo mais barato e mais perto do trabalho) → imóveis que valem a visita dentro dos seus limites → como fechar bem.
+- Como cada número é calculado: [docs/analises.md](docs/analises.md).
+
 <a id="fontes"></a>
 
 ## 07 / Fontes: o que está integrado
@@ -351,6 +362,7 @@ Antes de `pnpm db:migrate`, defina em `.env.local`: `DATABASE_URL=postgres://pos
 |---|---|
 | [docs/deploy.md](docs/deploy.md) | publicar, agendar, fontes, camadas da PBH, notificações |
 | [docs/fontes.md](docs/fontes.md) | fontes integradas, pendentes e por quê |
+| [docs/analises.md](docs/analises.md) | perfil, deslocamento no pico, nota, negociação, orçamento e regiões |
 | [PRODUCT.md](PRODUCT.md) | escopo, decisões e critérios de aceitação |
 | [docs/architecture.md](docs/architecture.md) | módulos, dados e fluxos |
 | [docs/security.md](docs/security.md) | segurança, LGPD, retenção e backups |

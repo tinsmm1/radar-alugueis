@@ -6,24 +6,50 @@ import { belowMarket, buildStats, comparableMedian, opportunity, type Comparable
 import { grossYieldBp } from "@/domain/purchase";
 import { evaluate, type EvalInput, type Evaluation } from "@/domain/evaluation";
 import { riskIndex, type LocationFacts } from "@/domain/risk";
+import type { CommuteSummary } from "@/domain/commute";
+import { negotiation } from "@/domain/negotiation";
+import { locatedWorkplaces, normalisedWeights, type Profile } from "@/domain/profile";
+import { loadProfile } from "../profile";
 
 type Row = {
   id: number; neighborhood: string | null; regional: string | null; type: string | null; bedrooms: number | null; areaM2: number | null; isDemo: boolean;
   forRent: boolean; forSale: boolean; rentCents: number | null; costPerM2: number | null; salePriceCents: number | null; salePriceM2: number | null;
   dropBp: number | null; droppedAt: Date | null; saleDropBp: number | null; saleDroppedAt: Date | null; firstSeenAt: Date;
   analysis: unknown; parking: number | null; features: string[]; costStatus: string | null; geoPrecision: string | null; sourceKeys: string[];
+  initialRentCents: number | null; initialSalePriceCents: number | null; commute: unknown; condoCents: number | null;
 };
+
+const dropSince = (initial: number | null, now: number | null) => (initial && now && now < initial ? Math.round(((initial - now) / initial) * 10_000) : null);
 
 const DAY = 86_400_000;
 const recent = (bp: number | null, at: Date | null, now: Date) => (bp && at && now.getTime() - at.getTime() <= 30 * DAY ? bp : null);
 
 /** Evaluation of one offer: price against its comparables plus the location and the home. */
-function evaluationOf(r: Row, mode: "aluguel" | "compra", own: number | null, stats: ReturnType<typeof buildStats>, extra: Pick<EvalInput, "recentDropBp" | "costComplete" | "yieldBp">): Evaluation {
+const condoM2 = (r: Row) => (r.condoCents != null && r.condoCents > 0 && r.areaM2 ? Math.round(r.condoCents / r.areaM2) : null);
+
+function condoVsMedian(r: Row, condoStats: ReturnType<typeof buildStats>): number | null {
+  const own = condoM2(r);
+  const med = own != null ? comparableMedian({ ...base(r), costPerM2: own }, condoStats) : null;
+  return med && own != null ? Math.round(((med.median - own) / med.median) * 1000) / 10 : null;
+}
+
+function evaluationOf(r: Row, mode: "aluguel" | "compra", own: number | null, stats: ReturnType<typeof buildStats>, extra: Pick<EvalInput, "recentDropBp" | "costComplete" | "yieldBp" | "condoVsMedianPct">, profile: Profile, now: Date): Evaluation {
   const med = own != null ? comparableMedian({ ...base(r), costPerM2: own }, stats) : null;
   const facts = (r.analysis ?? null) as LocationFacts | null;
+  const priceVsMedianPct = med && own != null ? Math.round(((med.median - own) / med.median) * 1000) / 10 : null;
+  const withProfile = locatedWorkplaces(profile).length > 0;
+  const commute = withProfile ? ((r.commute ?? null) as CommuteSummary | null) : null;
+  const buy = mode === "compra";
   return evaluate({
     mode, ...extra,
-    priceVsMedianPct: med && own != null ? Math.round(((med.median - own) / med.median) * 1000) / 10 : null,
+    priceVsMedianPct,
+    commute, maxCommuteMin: profile.maxCommuteMin, expectCommute: withProfile,
+    weights: withProfile ? normalisedWeights(profile, true) : undefined,
+    negotiation: negotiation({
+      mode, askingCents: buy ? r.salePriceCents : r.rentCents, priceVsMedianPct, sources: r.sourceKeys.length,
+      daysOnMarket: Math.max(0, Math.floor((now.getTime() - r.firstSeenAt.getTime()) / DAY)),
+      totalDropBp: buy ? dropSince(r.initialSalePriceCents, r.salePriceCents) : dropSince(r.initialRentCents, r.rentCents),
+    }),
     comparables: med?.comparables ?? 0, comparableScope: med?.scope ?? null,
     facts, risk: facts ? riskIndex(facts) : null,
     parking: r.parking, featureCount: r.features.length, areaM2: r.areaM2, exactLocation: r.geoPrecision === "exata", sources: r.sourceKeys.length,
@@ -43,6 +69,7 @@ const base = (r: Row): Omit<Comparable, "costPerM2"> => ({ id: r.id, neighborhoo
  */
 export async function refreshOpportunities(now = new Date()): Promise<{ withSignals: number; saleWithSignals: number }> {
   const db = getDb();
+  const profile = await loadProfile();
   const rows = (await db
     .select({
       id: properties.id, neighborhood: properties.neighborhood, regional: properties.regional, type: properties.type, bedrooms: properties.bedrooms, areaM2: properties.areaM2,
@@ -50,6 +77,7 @@ export async function refreshOpportunities(now = new Date()): Promise<{ withSign
       salePriceCents: properties.salePriceCents, salePriceM2: properties.salePriceM2Cents, dropBp: properties.dropBp, droppedAt: properties.droppedAt,
       saleDropBp: properties.saleDropBp, saleDroppedAt: properties.saleDroppedAt, firstSeenAt: properties.firstSeenAt,
       analysis: properties.analysis, parking: properties.parking, features: properties.features, costStatus: properties.costStatus, geoPrecision: properties.geoPrecision, sourceKeys: properties.sourceKeys,
+      initialRentCents: properties.initialRentCents, initialSalePriceCents: properties.initialSalePriceCents, commute: properties.commute, condoCents: properties.condoCents,
     })
     .from(properties)
     .where(sql`${properties.status} = 'ativo' and ${properties.listingCount} > 0`)) as Row[];
@@ -63,9 +91,10 @@ export async function refreshOpportunities(now = new Date()): Promise<{ withSign
     const costStats = buildStats(rentals.map((r) => ({ ...base(r), costPerM2: r.costPerM2 })));
     const rentM2Stats = buildStats(rentals.map((r) => ({ ...base(r), costPerM2: r.rentCents != null && r.areaM2 ? Math.round(r.rentCents / r.areaM2) : null })));
     const saleStats = buildStats(sales.map((r) => ({ ...base(r), costPerM2: r.salePriceM2 })));
+    const condoStats = buildStats(market.map((r) => ({ ...base(r), costPerM2: condoM2(r) })));
     for (const r of rentals) {
       const o = opportunity({ dropBp: r.dropBp, droppedAt: r.droppedAt, firstSeenAt: r.firstSeenAt, below: belowMarket({ ...base(r), costPerM2: r.costPerM2 }, costStats) }, now);
-      const ev = evaluationOf(r, "aluguel", r.costPerM2, costStats, { recentDropBp: recent(r.dropBp, r.droppedAt, now), costComplete: r.costStatus == null ? null : r.costStatus === "completo", yieldBp: null });
+      const ev = evaluationOf(r, "aluguel", r.costPerM2, costStats, { recentDropBp: recent(r.dropBp, r.droppedAt, now), costComplete: r.costStatus == null ? null : r.costStatus === "completo", yieldBp: null, condoVsMedianPct: condoVsMedian(r, condoStats) }, profile, now);
       rent.push({ id: r.id, score: o.score, data: o.signals.length ? o : null, ev });
     }
     for (const r of sales) {
@@ -73,7 +102,7 @@ export async function refreshOpportunities(now = new Date()): Promise<{ withSign
       const estRent = est && r.areaM2 ? Math.round((est.median * r.areaM2) / 100) * 100 : null;
       const yieldBp = grossYieldBp(estRent, r.salePriceCents);
       const o = opportunity({ dropBp: r.saleDropBp, droppedAt: r.saleDroppedAt, firstSeenAt: r.firstSeenAt, below: belowMarket({ ...base(r), costPerM2: r.salePriceM2 }, saleStats), yieldBp }, now);
-      const ev = evaluationOf(r, "compra", r.salePriceM2, saleStats, { recentDropBp: recent(r.saleDropBp, r.saleDroppedAt, now), costComplete: null, yieldBp });
+      const ev = evaluationOf(r, "compra", r.salePriceM2, saleStats, { recentDropBp: recent(r.saleDropBp, r.saleDroppedAt, now), costComplete: null, yieldBp, condoVsMedianPct: condoVsMedian(r, condoStats) }, profile, now);
       sale.push({ id: r.id, score: o.score, data: o.signals.length || est ? { ...o, rentEstimate: est ? { ...est, cents: estRent } : null } : null, estRent, yieldBp, ev });
     }
   }

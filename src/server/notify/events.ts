@@ -7,12 +7,13 @@ import type { ListingEvent } from "../collect/ingest";
 import type { Opened } from "../collect/properties";
 import { matchingIds } from "../search";
 
-export type NotificationKind = "novo" | "baixa_preco" | "preco_alvo" | "indisponivel" | "voltou" | "fonte_falhou";
+export type NotificationKind = "novo" | "baixa_preco" | "preco_alvo" | "perfil" | "indisponivel" | "voltou" | "fonte_falhou";
 
 export const KIND_LABEL: Record<NotificationKind, string> = {
   novo: "Novo imóvel na sua busca",
   baixa_preco: "Preço reduzido",
   preco_alvo: "Preço-alvo atingido",
+  perfil: "Oportunidade para o seu perfil",
   indisponivel: "Ficou indisponível",
   voltou: "Voltou a ser anunciado",
   fonte_falhou: "Fonte com falha",

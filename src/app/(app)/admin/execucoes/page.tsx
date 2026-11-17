@@ -6,7 +6,7 @@ export const metadata = { title: "Execuções" };
 export const dynamic = "force-dynamic";
 
 const STAGE_LABEL: Record<string, string> = {
-  fontes: "Fontes", camadas: "Camadas", geocodificar: "Geocodificação", analisar: "Análise", oportunidades: "Oportunidades", notificar: "Notificações", retencao: "Retenção", concluido: "Concluída",
+  fontes: "Fontes", camadas: "Camadas", geocodificar: "Geocodificação", analisar: "Análise", deslocamento: "Deslocamento", oportunidades: "Oportunidades", notificar: "Notificações", retencao: "Retenção", concluido: "Concluída",
 };
 const TRIGGER_LABEL: Record<string, string> = { github: "GitHub Actions", vercel: "Vercel Cron", manual: "Manual" };
 

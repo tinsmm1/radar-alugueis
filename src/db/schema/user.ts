@@ -10,6 +10,8 @@ export const settings = pgTable("settings", {
   notificationsSeenAt: timestamp("notifications_seen_at", { withTimezone: true }),
   /** Filters sent to the Apify robots and checked on import (see src/domain/collect-filters.ts). */
   collectFilters: jsonb("collect_filters"),
+  /** Decision profile: workplaces and times, commute costs, finances, grade weights (src/domain/profile.ts). */
+  profile: jsonb("profile"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -67,7 +69,7 @@ export const notifications = pgTable(
   "notifications",
   {
     id: serial("id").primaryKey(),
-    kind: text("kind").notNull(), // novo | baixa_preco | preco_alvo | indisponivel | voltou | fonte_falhou
+    kind: text("kind").notNull(), // novo | baixa_preco | preco_alvo | perfil | indisponivel | voltou | fonte_falhou
     propertyId: integer("property_id").references(() => properties.id, { onDelete: "cascade" }),
     savedSearchId: integer("saved_search_id").references(() => savedSearches.id, { onDelete: "cascade" }),
     /** Dedup key: one notification per kind/property/search/day. */

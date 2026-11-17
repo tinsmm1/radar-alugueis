@@ -1,6 +1,9 @@
 import { meters, pctBp } from "./money";
 import type { LocationFacts, RiskIndex } from "./risk";
 import type { UrbanKind } from "./layers";
+import { commuteFraction, commuteNotes, type CommuteSummary } from "./commute";
+import type { Negotiation } from "./negotiation";
+import { WEIGHT_KEYS, type WeightKey } from "./profile";
 
 /**
  * Critical evaluation of one offer in one mode: a 0–100 grade made of explained parts (price
@@ -29,10 +32,22 @@ export type EvalInput = {
   areaM2: number | null;
   exactLocation: boolean;
   sources: number;
+  /** Commute to the owner's workplaces at their times (null/absent = no workplace configured). */
+  commute?: CommuteSummary | null;
+  maxCommuteMin?: number;
+  /** Profile has located workplaces: a missing commute (property not located) is neutral and lowers confidence. */
+  expectCommute?: boolean;
+  /** Condo fee per m² against comparables: positive = below the median (%). */
+  condoVsMedianPct?: number | null;
+  /** Normalised weights (sum 100) from the owner's profile; absent = classic weights 50/15/25/10. */
+  weights?: Record<WeightKey, number>;
+  /** Negotiation plan, carried in the stored evaluation for the property page. */
+  negotiation?: Negotiation | null;
 };
 
 export type Grade = "A" | "B" | "C" | "D" | "E";
-export type EvalPart = { key: "preco" | "custos" | "rendimento" | "risco" | "conveniencia" | "imovel"; label: string; points: number; max: number };
+export type EvalPart = { key: "preco" | "custos" | "rendimento" | "risco" | "conveniencia" | "deslocamento" | "imovel"; label: string; points: number; max: number };
+export type CommuteBrief = { avgOneWayMin: number; worstOneWayMin: number; worstName: string; monthlyHours: number; monthlyCostCents: number; monthlyTimeCostCents: number; method: CommuteSummary["method"] };
 export type Evaluation = {
   score: number;
   grade: Grade;
@@ -43,10 +58,24 @@ export type Evaluation = {
   cons: string[];
   /** Geographic risk (landslide, flood...) shown with the grade but never counted in it. */
   riskNote?: string | null;
+  commute?: CommuteBrief | null;
+  negotiation?: Negotiation | null;
 };
 
 export const GRADE_LABEL: Record<Grade, string> = { A: "Excelente", B: "Boa", C: "Na média", D: "Abaixo da média", E: "Fraca" };
 export const CONFIDENCE_LABEL: Record<Evaluation["confidence"], string> = { alta: "Confiança alta", media: "Confiança média", baixa: "Confiança baixa" };
+/** Price beyond this (% below the comparables' median) is suspicious: possible error, bad condition or scam. */
+export const SUSPICIOUS_BELOW_PCT = 35;
+
+/**
+ * How much the comparison can be trusted: 5 comparables → 0.75, 10 or more → 1; a regional
+ * (less specific) scope counts 15% less. The price effect is shrunk toward neutral by it.
+ */
+export function comparableReliability(n: number, scope: EvalInput["comparableScope"]): number {
+  const base = Math.min(1, Math.max(0.5, 0.5 + n / 20));
+  return Math.round(base * (scope === "bairro" || scope == null ? 1 : 0.85) * 100) / 100;
+}
+
 export const EVALUATION_NOTE =
   "Nota automática que compara o anúncio com imóveis parecidos coletados pelo Radar e resume as bases geográficas consultadas. Não é avaliação imobiliária, laudo nem vistoria.";
 
@@ -82,12 +111,19 @@ export function evaluate(i: EvalInput): Evaluation {
     unknowns++;
     cons.push("Ainda não há imóveis comparáveis suficientes para avaliar o preço.");
   } else {
-    price = clamp(25 + i.priceVsMedianPct * 1.25, 0, 50);
+    const rel = comparableReliability(i.comparables, i.comparableScope);
+    price = clamp(25 + i.priceVsMedianPct * 1.25 * rel, 0, 50);
     const where = SCOPE_TEXT[i.comparableScope ?? "regional"];
     const p = Math.abs(Math.round(i.priceVsMedianPct));
-    if (i.priceVsMedianPct >= 5) pros.push(`${unit} ${p}% abaixo da mediana de ${i.comparables} imóveis parecidos ${where}.`);
+    if (i.priceVsMedianPct >= SUSPICIOUS_BELOW_PCT) {
+      // Too good to be true: do not reward fully, and say why.
+      price = Math.min(price, 40);
+      unknowns++;
+      cons.push(`${unit} ${p}% abaixo da mediana dos parecidos: muito fora do padrão. Confirme área, estado de conservação e documentação (pode ser erro no anúncio ou golpe).`);
+    } else if (i.priceVsMedianPct >= 5) pros.push(`${unit} ${p}% abaixo da mediana de ${i.comparables} imóveis parecidos ${where}.`);
     else if (i.priceVsMedianPct <= -5) cons.push(`${unit} ${p}% acima da mediana de ${i.comparables} imóveis parecidos ${where}.`);
     else pros.push(`${unit} alinhado à mediana de ${i.comparables} imóveis parecidos ${where}.`);
+    if (rel < 0.85) cons.push(`Comparação com poucos imóveis (${i.comparables}): o peso do preço na nota foi reduzido.`);
   }
   if (i.recentDropBp != null && i.recentDropBp >= 100) {
     price = Math.min(50, price + 4);
@@ -122,8 +158,12 @@ export function evaluate(i: EvalInput): Evaluation {
       pts = 1;
       cons.push(`Rendimento bruto estimado baixo: ${pctBp(i.yieldBp)} ao ano.`);
     }
+    if (i.condoVsMedianPct != null && i.condoVsMedianPct <= -30) pts = Math.max(0, pts - 2);
+    else if (i.condoVsMedianPct != null && i.condoVsMedianPct >= 20) pts = Math.min(10, pts + 1);
     second = { key: "rendimento", label: "Rendimento estimado", points: pts, max: 10 };
   }
+  if (i.condoVsMedianPct != null && i.condoVsMedianPct <= -30) cons.push(`Condomínio por m² ${Math.round(-i.condoVsMedianPct)}% acima dos parecidos: pesa no custo mensal.`);
+  else if (i.condoVsMedianPct != null && i.condoVsMedianPct >= 20) pros.push(`Condomínio por m² ${Math.round(i.condoVsMedianPct)}% abaixo dos parecidos.`);
 
   // Geographic risk is informative only (owner decision): it never changes the grade.
   let riskNote: string | null = null;
@@ -171,15 +211,66 @@ export function evaluate(i: EvalInput): Evaluation {
     pros.push(`Anunciado em ${i.sources} fontes (dados conferidos entre elas).`);
   }
 
-  const parts: EvalPart[] = [
-    { key: "preco", label: "Preço frente a parecidos", points: Math.round(price), max: 50 },
-    { ...second, points: Math.round(second.points * 1.5), max: 15 },
-    { key: "conveniencia", label: "Serviços e transporte", points: Math.round((conv * 25) / 15), max: 25 },
-    { key: "imovel", label: "Imóvel e dados", points: Math.min(10, home), max: 10 },
-  ];
+  // Commute to the owner's workplaces (only when a profile with located workplaces exists).
+  let commuteF: number | null = null;
+  if (!i.commute && i.expectCommute) {
+    commuteF = 0.5;
+    unknowns++;
+    cons.push("Sem localização exata para calcular o tempo até o trabalho (conta como neutro).");
+  }
+  if (i.commute) {
+    commuteF = commuteFraction(i.commute, i.maxCommuteMin ?? 45);
+    const notes = commuteNotes(i.commute, i.maxCommuteMin ?? 45);
+    pros.push(...notes.pros);
+    cons.push(...notes.cons);
+  }
+
+  let parts: EvalPart[];
+  if (!i.weights && commuteF == null) {
+    parts = [
+      { key: "preco", label: "Preço frente a parecidos", points: Math.round(price), max: 50 },
+      { ...second, points: Math.round(second.points * 1.5), max: 15 },
+      { key: "conveniencia", label: "Serviços e transporte", points: Math.round((conv * 25) / 15), max: 25 },
+      { key: "imovel", label: "Imóvel e dados", points: Math.min(10, home), max: 10 },
+    ];
+  } else {
+    const w = { ...(i.weights ?? { preco: 40, custos: 12, deslocamento: commuteF == null ? 0 : 20, servicos: 18, imovel: 10 }) };
+    if (commuteF == null) w.deslocamento = 0;
+    const maxes = roundTo100(w);
+    const frac: Record<WeightKey, number> = { preco: price / 50, custos: second.points / 10, deslocamento: commuteF ?? 0, servicos: Math.min(1, conv / 15), imovel: Math.min(10, home) / 10 };
+    const label: Record<WeightKey, [EvalPart["key"], string]> = {
+      preco: ["preco", "Preço frente a parecidos"], custos: [second.key, second.label], deslocamento: ["deslocamento", "Tempo até o trabalho"],
+      servicos: ["conveniencia", "Serviços e transporte"], imovel: ["imovel", "Imóvel e dados"],
+    };
+    parts = WEIGHT_KEYS.filter((k) => maxes[k] > 0).map((k) => ({ key: label[k][0], label: label[k][1], points: Math.round(frac[k] * maxes[k]), max: maxes[k] }));
+  }
   const score = clamp(Math.round(parts.reduce((s, p) => s + p.points, 0)), 0, 100);
   const grade = gradeOf(score);
-  return { score, grade, label: GRADE_LABEL[grade], confidence: unknowns === 0 ? "alta" : unknowns === 1 ? "media" : "baixa", parts, pros, cons, riskNote };
+  const commute: CommuteBrief | null = i.commute
+    ? { avgOneWayMin: i.commute.avgOneWayMin, worstOneWayMin: i.commute.worstOneWayMin, worstName: i.commute.worstName, monthlyHours: i.commute.monthlyHours, monthlyCostCents: i.commute.monthlyCostCents, monthlyTimeCostCents: i.commute.monthlyTimeCostCents, method: i.commute.method }
+    : null;
+  return { score, grade, label: GRADE_LABEL[grade], confidence: unknowns === 0 ? "alta" : unknowns === 1 ? "media" : "baixa", parts, pros, cons, riskNote, commute, negotiation: i.negotiation ?? null };
+}
+
+/** Parts that pulled the grade up or down the most (points above or below half of each part). */
+export function drivers(e: Pick<Evaluation, "parts">): { up: EvalPart[]; down: EvalPart[] } {
+  const delta = (p: EvalPart) => p.points - p.max / 2;
+  const sorted = [...e.parts].sort((a, b) => delta(b) - delta(a));
+  return { up: sorted.filter((p) => delta(p) >= p.max * 0.15).slice(0, 2), down: sorted.reverse().filter((p) => delta(p) <= -p.max * 0.15).slice(0, 2) };
+}
+
+/** Integer maxima that keep the weights' proportions and add up to exactly 100. */
+function roundTo100(w: Record<WeightKey, number>): Record<WeightKey, number> {
+  const sum = WEIGHT_KEYS.reduce((s, k) => s + w[k], 0) || 1;
+  const raw = WEIGHT_KEYS.map((k) => ({ k, v: (w[k] * 100) / sum }));
+  const out = Object.fromEntries(raw.map(({ k, v }) => [k, Math.floor(v)])) as Record<WeightKey, number>;
+  let left = 100 - WEIGHT_KEYS.reduce((s, k) => s + out[k], 0);
+  for (const { k } of [...raw].sort((a, b) => (b.v % 1) - (a.v % 1))) {
+    if (left <= 0) break;
+    out[k]++;
+    left--;
+  }
+  return out;
 }
 
 /** Inputs of a neighbourhood's place grade (all measured around its centre or over its properties). */

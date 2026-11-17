@@ -10,14 +10,16 @@ import { loadOsmStep } from "../geo/osm";
 import { loadRegionais } from "../geo/regionais";
 import { loadSgbLayer } from "../geo/sgb";
 import { checkPriceTargets } from "../notify/events";
+import { profileMatches } from "../notify/profile-alerts";
 import { deliverPending } from "../notify/deliver";
 import { ADAPTERS } from "../sources/registry";
 import { refreshOpportunities } from "./opportunities";
+import { refreshCommutes } from "../commute/refresh";
 import { applyRetention } from "./retention";
 import { collectSource } from "./source-run";
 
 export type Trigger = "github" | "vercel" | "manual";
-export const STAGES = ["fontes", "camadas", "geocodificar", "analisar", "oportunidades", "notificar", "retencao", "concluido"] as const;
+export const STAGES = ["fontes", "camadas", "geocodificar", "analisar", "deslocamento", "oportunidades", "notificar", "retencao", "concluido"] as const;
 export type Stage = (typeof STAGES)[number];
 export type StepResult = { runId: number; stage: Stage; more: boolean; note: string };
 
@@ -95,12 +97,18 @@ async function work(stage: Stage, runId: number, deadline: number, stats: Record
       stats.analisados = Number(stats.analisados ?? 0) + r.analyzed;
       return { done: !r.remaining || (r.analyzed === 0 && !r.waiting), note: `${r.analyzed} analisados` };
     }
+    case "deslocamento": {
+      const r = await refreshCommutes(deadline);
+      stats.deslocamentos = Number(stats.deslocamentos ?? 0) + r.updated;
+      return { done: !r.remaining, note: `${r.updated} deslocamentos calculados` };
+    }
     case "oportunidades": {
       stats.oportunidades = (await refreshOpportunities()).withSignals;
       return { done: true, note: "oportunidades atualizadas" };
     }
     case "notificar": {
       stats.precoAlvo = await checkPriceTargets();
+      stats.perfil = await profileMatches();
       const r = await deliverPending();
       stats.emails = r.email;
       stats.telegram = r.telegram;

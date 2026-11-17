@@ -54,13 +54,13 @@ async function pending(column: AnyPgColumn): Promise<Array<{ id: number } & Line
     .limit(50);
   const base = appUrl();
   return rows.map((r) => {
-    const pl = (r.payload ?? {}) as { search?: string; mode?: string; dropBp?: number | null; targetCents?: number; priceCents?: number; source?: string; error?: string };
+    const pl = (r.payload ?? {}) as { search?: string; mode?: string; dropBp?: number | null; targetCents?: number; priceCents?: number; source?: string; error?: string; score?: number; commuteMinutes?: number | null };
     const kind = r.kind as NotificationKind;
     if (kind === "fonte_falhou") return { id: r.id, kind, title: `Fonte com falha: ${pl.source}`, detail: pl.error ?? "", url: `${base}/admin` };
     const where = [r.title ?? "Imóvel", r.neighborhood].filter(Boolean).join(" · ");
     const buy = pl.mode === "compra";
     const price = buy ? (r.sale ? `${brl(r.sale)} à venda` : null) : (r.total ?? r.rent) ? `${brl(r.total ?? r.rent)}/mês` : null;
-    const origin = pl.search ? `Busca "${pl.search}"` : kind === "preco_alvo" ? `Alvo de ${brl(pl.targetCents ?? null)}${buy ? "" : "/mês"}` : "Imóvel acompanhado";
+    const origin = pl.search ? `Busca "${pl.search}"` : kind === "perfil" ? `Nota ${pl.score ?? "—"}/100${pl.commuteMinutes != null ? ` · ${pl.commuteMinutes} min do trabalho` : ""}` : kind === "preco_alvo" ? `Alvo de ${brl(pl.targetCents ?? null)}${buy ? "" : "/mês"}` : "Imóvel acompanhado";
     const detail = [buy ? "Comprar" : "Alugar", origin, price, pl.dropBp ? `−${pctBp(pl.dropBp)}` : null].filter(Boolean).join(" · ");
     return { id: r.id, kind, title: `${KIND_LABEL[kind]}: ${where}`, detail, url: `${base}/imovel/${r.pid}${buy ? "?modo=compra" : "?modo=aluguel"}` };
   });

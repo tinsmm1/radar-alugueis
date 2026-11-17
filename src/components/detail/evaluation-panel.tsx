@@ -1,6 +1,6 @@
 import { CircleAlert, CircleCheck, Info, Mountain } from "lucide-react";
 import { GRADE_CLASS } from "@/components/property/badges";
-import { CONFIDENCE_LABEL, EVALUATION_NOTE, type Evaluation } from "@/domain/evaluation";
+import { CONFIDENCE_LABEL, drivers, EVALUATION_NOTE, type Evaluation } from "@/domain/evaluation";
 import { cn } from "@/lib/utils";
 
 /** Critical evaluation of the offer: grade, score parts, strengths and points of attention. */
@@ -13,6 +13,7 @@ export function EvaluationPanel({ evaluation, mode }: { evaluation: Evaluation |
     );
   }
   const e = evaluation;
+  const d = drivers(e);
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-4">
@@ -34,6 +35,14 @@ export function EvaluationPanel({ evaluation, mode }: { evaluation: Evaluation |
           </li>
         ))}
       </ul>
+      {(d.up.length > 0 || d.down.length > 0) && (
+        <p className="rounded-lg bg-muted/40 p-2.5 text-sm">
+          <b>O que mais pesou:</b>{" "}
+          {d.up.length > 0 && <span className="text-emerald-800">a favor, {d.up.map((p) => p.label.toLowerCase()).join(" e ")}</span>}
+          {d.up.length > 0 && d.down.length > 0 && "; "}
+          {d.down.length > 0 && <span className="text-amber-800">contra, {d.down.map((p) => p.label.toLowerCase()).join(" e ")}</span>}.
+        </p>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <h3 className="mb-1.5 text-sm font-medium">Pontos fortes</h3>

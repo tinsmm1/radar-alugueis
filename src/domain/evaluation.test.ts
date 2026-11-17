@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluate, gradeOf, placeScore, type EvalInput } from "./evaluation";
+import { comparableReliability, drivers, evaluate, gradeOf, placeScore, type EvalInput } from "./evaluation";
 import type { LocationFacts } from "./risk";
 
 const facts: LocationFacts = {
@@ -76,5 +76,57 @@ describe("place score", () => {
     expect(b.cons.join(" ")).not.toMatch(/inundação/);
     const sameServicesRisky = placeScore({ avgRisk: 90, floodPct: 90, nearestTransitM: 300, transitStations: 3, supermarkets: 5, pharmacies: 6, hospitals: 2, parks: 3 });
     expect(sameServicesRisky.score).toBe(a.score);
+  });
+});
+
+describe("evaluation with the owner's profile", () => {
+  const commute = (m: number) => ({ avgOneWayMin: m, worstOneWayMin: m, worstName: "Trabalho", monthlyHours: (m * 2 * 22) / 60, monthlyCostCents: 0, monthlyTimeCostCents: 0, method: "modelo" as const, workplaces: [], computedAt: "" });
+  it("adds a commute part, keeps 100 points and prefers the closer home", () => {
+    const near = evaluate({ ...good, commute: commute(12), maxCommuteMin: 45 });
+    const far = evaluate({ ...good, commute: commute(80), maxCommuteMin: 45 });
+    expect(near.parts.map((p) => p.key)).toContain("deslocamento");
+    expect(near.parts.reduce((s, p) => s + p.max, 0)).toBe(100);
+    expect(near.score).toBeGreaterThan(far.score);
+    expect(near.commute?.avgOneWayMin).toBe(12);
+  });
+  it("custom weights are respected", () => {
+    const e = evaluate({ ...good, commute: commute(30), weights: { preco: 20, custos: 10, deslocamento: 50, servicos: 10, imovel: 10 } });
+    expect(e.parts.find((p) => p.key === "deslocamento")!.max).toBe(50);
+  });
+});
+
+describe("score robustness (audit 2026-11)", () => {
+  it("few comparables shrink the price effect and say so", () => {
+    expect(comparableReliability(5, "bairro")).toBe(0.75);
+    expect(comparableReliability(12, "bairro")).toBe(1);
+    expect(comparableReliability(12, "regional")).toBe(0.85);
+    const few = evaluate({ ...good, comparables: 5, recentDropBp: null });
+    const many = evaluate({ ...good, comparables: 12, recentDropBp: null });
+    expect(few.parts[0].points).toBeLessThan(many.parts[0].points);
+    expect(few.cons.join(" ")).toMatch(/poucos imóveis \(5\)/);
+  });
+  it("a price far below the comparables is flagged, capped and lowers confidence", () => {
+    const e = evaluate({ ...good, priceVsMedianPct: 45, recentDropBp: null });
+    expect(e.parts[0].points).toBeLessThanOrEqual(40);
+    expect(e.cons.join(" ")).toMatch(/golpe/);
+    expect(e.confidence).not.toBe("alta");
+  });
+  it("profile with workplaces but no commute for this home: neutral part, lower confidence", () => {
+    const w = { preco: 40, custos: 12, deslocamento: 20, servicos: 18, imovel: 10 };
+    const e = evaluate({ ...good, weights: w, expectCommute: true, commute: null });
+    const part = e.parts.find((p) => p.key === "deslocamento")!;
+    expect(part.points).toBe(10);
+    expect(e.confidence).toBe("media");
+  });
+  it("expensive condo is a point of attention and lowers the buy yield part", () => {
+    const base = evaluate({ ...good, mode: "compra", yieldBp: 500 });
+    const pricey = evaluate({ ...good, mode: "compra", yieldBp: 500, condoVsMedianPct: -40 });
+    expect(pricey.score).toBeLessThan(base.score);
+    expect(pricey.cons.join(" ")).toMatch(/Condomínio por m² 40% acima/);
+  });
+  it("drivers name the parts that pulled the grade up and down", () => {
+    const e = evaluate({ ...good, priceVsMedianPct: -25, recentDropBp: null });
+    expect(drivers(e).down.map((p) => p.key)).toContain("preco");
+    expect(drivers(evaluate(good)).up.map((p) => p.key)).toContain("preco");
   });
 });

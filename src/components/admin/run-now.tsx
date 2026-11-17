@@ -11,6 +11,7 @@ const STAGE_LABEL: Record<string, string> = {
   camadas: "atualizando camadas",
   geocodificar: "localizando endereços",
   analisar: "analisando localizações",
+  deslocamento: "calculando deslocamentos até o trabalho",
   oportunidades: "calculando oportunidades",
   notificar: "enviando notificações",
   retencao: "aplicando retenção",

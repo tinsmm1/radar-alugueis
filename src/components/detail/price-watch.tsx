@@ -15,7 +15,7 @@ type Watch = { targetCents: number | null; startPriceCents: number | null; notif
  * Follow the price of this property in the current mode, optionally with a target: the owner is
  * notified (app, e-mail, Telegram) on every drop and when the price reaches the target.
  */
-export function PriceWatch({ propertyId, mode, currentCents, watch }: { propertyId: number; mode: "aluguel" | "compra"; currentCents: number | null; watch: Watch | null }) {
+export function PriceWatch({ propertyId, mode, currentCents, watch, suggestedCents }: { propertyId: number; mode: "aluguel" | "compra"; currentCents: number | null; watch: Watch | null; suggestedCents?: number | null }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [value, setValue] = useState(watch?.targetCents != null ? String(watch.targetCents / 100) : "");
@@ -62,6 +62,11 @@ export function PriceWatch({ propertyId, mode, currentCents, watch }: { property
             {watch ? "Atualizar" : "Acompanhar"}
           </Button>
         </div>
+        {suggestedCents != null && currentCents != null && suggestedCents < currentCents && watch?.targetCents !== suggestedCents && (
+          <button type="button" className="text-[11px] font-medium text-primary underline-offset-2 hover:underline" onClick={() => setValue(String(Math.round(suggestedCents / 100)))}>
+            Usar a meta do plano de proposta: {brl(suggestedCents)}{unit}
+          </button>
+        )}
         {watch?.targetCents != null && (
           <p className="text-[11px] text-muted-foreground">
             Alvo atual: {brl(watch.targetCents)}{unit}
