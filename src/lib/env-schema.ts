@@ -32,7 +32,7 @@ export const optionalEnvSchema = {
   /** Apify API token: reads the datasets of the owner's portal scraper tasks (opt-in, see docs/fontes.md). */
   APIFY_TOKEN: z.string().trim().regex(/^apify_api_\S{20,}$/),
   /** TomTom Routing API key: car/bike/walk times with historic traffic at the owner's times (free: 2,500 requests/day). */
-  TOMTOM_API_KEY: z.string().trim().regex(/^[A-Za-z0-9]{20,64}$/),
+  TOMTOM_API_KEY: z.string().trim().regex(/^[A-Za-z0-9._~-]{16,256}$/), // legacy and MyTomTom key formats
   /** Max TomTom requests per day used by the Radar (default 2000, below the free 2,500). */
   TOMTOM_DAILY_BUDGET: z.coerce.number().int().min(0).max(100_000),
 } as const;
