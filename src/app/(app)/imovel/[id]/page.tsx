@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FlaskConical, MapPin, Copy } from "lucide-react";
+import { ArrowLeft, Copy, ExternalLink, FlaskConical, MapPin } from "lucide-react";
 import { EvChargerBadge, CostStatusBadge, DemoBadge, DropBadge, OpportunityBadges, PrecisionBadge, RiskBadge } from "@/components/property/badges";
 import { CompareButton } from "@/components/property/compare-button";
 import { FavoriteButton } from "@/components/property/favorite-button";
@@ -137,6 +137,18 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
                 </>
               ) : (
                 <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">Ainda sem localização no mapa: o endereço será localizado na próxima coleta.</p>
+              )}
+              {(address || p.lat != null) && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address && !approximate ? [address, p.neighborhood, "Belo Horizonte", "MG"].filter(Boolean).join(", ") : `${p.lat},${p.lng}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-2 text-sm font-medium shadow-xs hover:bg-accent"
+                >
+                  <MapPin className="size-4 text-primary" />
+                  Abrir no Google Maps
+                  <ExternalLink className="size-3.5 text-muted-foreground" />
+                </a>
               )}
             </div>
           </div>
