@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { brl, pctBp } from "@/domain/money";
+import { brl, groupDigits, pctBp } from "@/domain/money";
 import { removePriceWatch, setPriceWatch } from "@/server/actions/watches";
 
 type Watch = { targetCents: number | null; startPriceCents: number | null; notifiedAt: Date | null; createdAt: Date };
@@ -56,14 +56,14 @@ export function PriceWatch({ propertyId, mode, currentCents, watch, suggestedCen
       <div className="space-y-1.5">
         <Label htmlFor={`alvo-${mode}`} className="text-xs">Preço-alvo {mode === "compra" ? "(R$)" : "do custo mensal (R$/mês)"} · opcional</Label>
         <div className="flex gap-2">
-          <Input id={`alvo-${mode}`} inputMode="numeric" placeholder={currentCents != null ? `ex.: ${Math.round((currentCents * 0.9) / 100).toLocaleString("pt-BR")}` : "valor"} value={value} onChange={(e) => setValue(e.target.value)} className="h-9" />
+          <Input id={`alvo-${mode}`} inputMode="numeric" placeholder={currentCents != null ? `ex.: ${Math.round((currentCents * 0.9) / 100).toLocaleString("pt-BR")}` : "valor"} value={value} onChange={(e) => setValue(groupDigits(e.target.value.replace(/,.*/, "")))} className="h-9" />
           <Button size="sm" onClick={save} disabled={pending} className="h-9">
             <Target />
             {watch ? "Atualizar" : "Acompanhar"}
           </Button>
         </div>
         {suggestedCents != null && currentCents != null && suggestedCents < currentCents && watch?.targetCents !== suggestedCents && (
-          <button type="button" className="text-[11px] font-medium text-primary underline-offset-2 hover:underline" onClick={() => setValue(String(Math.round(suggestedCents / 100)))}>
+          <button type="button" className="text-[11px] font-medium text-primary underline-offset-2 hover:underline" onClick={() => setValue(groupDigits(String(Math.round(suggestedCents / 100))))}>
             Usar a meta do plano de proposta: {brl(suggestedCents)}{unit}
           </button>
         )}

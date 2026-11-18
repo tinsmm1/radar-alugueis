@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { safeEqual } from "@/auth/crypto";
 import { envState, optionalEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { continueRunLater } from "@/server/collect/continue";
 import { runStep, type Trigger } from "@/server/collect/run";
 import { BUSY, withRunLock } from "@/server/run-lock";
 import { hit } from "@/server/rate-limit";
@@ -33,9 +34,12 @@ async function handle(request: Request) {
   }
   try {
     await ensureSeeded();
-    const result = await withRunLock("collect", () => runStep(triggerOf(request), 50_000));
+    const hop = Math.max(0, Number(new URL(request.url).searchParams.get("hop")) || 0);
+    const result = await withRunLock("collect", () => runStep(triggerOf(request), 45_000));
     if (result === BUSY) return NextResponse.json({ app: "radar-alugueis", busy: true, more: true });
     if (!result) return NextResponse.json({ app: "radar-alugueis", idle: true, more: false });
+    // Unfinished run: chain the next call right away (does not depend on the GitHub scheduler).
+    if (result.more) continueRunLater(hop + 1);
     return NextResponse.json({ app: "radar-alugueis", ...result });
   } catch (err) {
     logger.error({ msg: (err as Error).message }, "collect step failed");

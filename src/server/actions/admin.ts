@@ -10,6 +10,7 @@ import { parseVrsync } from "@/domain/vrsync";
 import { DemoError, removeDemo, seedDemo } from "../collect/demo";
 import { purgeSource } from "../collect/ingest";
 import { refreshProperties } from "../collect/properties";
+import { continueRunLater } from "../collect/continue";
 import { runStep } from "../collect/run";
 import { storeListings } from "../collect/source-run";
 import { refreshOpportunities } from "../collect/opportunities";
@@ -52,6 +53,8 @@ export async function runCollectionNow() {
       return last;
     });
     if (result === BUSY) throw new ActionError("Outra coleta está em andamento. Aguarde alguns instantes.");
+    // What does not fit in this click continues by itself in the background.
+    if (result?.more) continueRunLater(1);
     return result ?? { runId: 0, stage: "concluido", more: false, note: "" };
   }, "/admin");
 }

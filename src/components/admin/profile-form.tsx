@@ -7,14 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { parseCoordinate, parseCoordinatePair } from "@/domain/geo";
+import { groupDigits, parseBrNumber } from "@/domain/money";
 import { WEIGHT_KEYS, WEIGHT_LABEL, type Profile, type WeightKey } from "@/domain/profile";
 import { recalcProfileNow, saveProfile } from "@/server/actions/profile";
 import { WorkplaceFields, type WorkplaceDraft } from "./workplace-fields";
 
-const reais = (cents: number | null) => (cents == null ? "" : String(cents / 100));
+const reais = (cents: number | null) => (cents == null ? "" : groupDigits(String(cents / 100).replace(".", ",")));
 const cents = (v: string) => {
-  const n = Number(v.replace(",", "."));
-  return v.trim() === "" || !Number.isFinite(n) ? null : Math.round(n * 100);
+  const n = parseBrNumber(v);
+  return n == null ? null : Math.round(n * 100);
 };
 /** Decimal ("-19.98") or degrees ("19°59'00.8\"S"), as copied from Google Maps. */
 const coord = (v: string) => parseCoordinate(v);
@@ -26,7 +27,7 @@ function Money({ id, label, value, onChange, hint }: { id: string; label: string
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <Input id={id} inputMode="decimal" value={value} placeholder="R$" onChange={(e) => onChange(e.target.value)} />
+      <Input id={id} inputMode="decimal" value={value} placeholder="R$" onChange={(e) => onChange(groupDigits(e.target.value))} />
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   );

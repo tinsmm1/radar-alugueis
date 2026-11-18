@@ -5,7 +5,7 @@ import { brl, m2, pctBp } from "@/domain/money";
 import { STATUS_LABEL, type ListingStatus } from "@/domain/lifecycle";
 import type { PropertyCard } from "@/server/search";
 import { cn } from "@/lib/utils";
-import { GradeBadge, CostStatusBadge, DemoBadge, DropBadge, OpportunityBadges, PrecisionBadge, RiskBadge, SourceBadges } from "./badges";
+import { EvChargerBadge, GradeBadge, CostStatusBadge, DemoBadge, DropBadge, OpportunityBadges, PrecisionBadge, RiskBadge, SourceBadges } from "./badges";
 import { CompareButton } from "./compare-button";
 import { FavoriteButton } from "./favorite-button";
 
@@ -101,6 +101,7 @@ export function PropertyCardView({ p, favorite, selected, compact, mode: wanted 
           <p className="line-clamp-1 text-xs text-muted-foreground">{p.features.slice(0, 4).map((f) => FEATURE_LABEL[f as Feature] ?? f).join(" · ")}{p.features.length > 4 ? ` +${p.features.length - 4}` : ""}</p>
         )}
         <div className="flex flex-wrap items-center gap-1">
+          <EvChargerBadge features={p.features} />
           <GradeBadge score={buy ? p.saleEvalScore : p.rentEvalScore} />
           <RiskBadge level={p.riskLevel} score={p.riskScore} />
           {!buy && <CostStatusBadge status={p.costStatus} />}

@@ -115,3 +115,11 @@ A **nota da região** combina preço por m² frente às outras áreas (40), temp
 - PBH, Programa de redução do tempo de viagem no transporte coletivo: <https://prefeitura.pbh.gov.br/mobilidade-urbana/programa-de-reducao-do-tempo-de-viagem-no-transporte-coletivo>
 - Tarifa de ônibus de BH em 2026 (R$ 6,25): Diário Oficial do Município, portaria de 30/12/2025
 - TomTom Routing API e plano gratuito: <https://developer.tomtom.com/pricing>
+
+## Carregador de carro elétrico
+
+Prioridade do dono. O Radar procura no título, na descrição e nas tags do anúncio menções a carregador instalado (`carregador_eletrico`: carregador de carro elétrico, wallbox, ponto ou estação de recarga) ou a preparo (`preparo_carregador`: infraestrutura, previsão ou tubulação para carregador). Negações como "sem carregador" não contam.
+
+- Quando o anúncio menciona, o imóvel ganha um selo âmbar em destaque no cartão e no topo do anúncio, aparece primeiro na ordem padrão da busca e gera um aviso (no app, por e-mail e Telegram), uma vez por imóvel e modo.
+- A busca tem o filtro "Com carregador de carro elétrico".
+- Quando o anúncio não menciona (a maioria), o anúncio mostra o caminho provável: casa com garagem costuma permitir a instalação, com avaliação de um eletricista; em apartamento depende do condomínio e da capacidade elétrica do prédio. Nunca é apresentado como garantia.

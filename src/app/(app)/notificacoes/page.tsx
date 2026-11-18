@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, Bell, Compass, Mail, MessageCircle, PlusCircle, RotateCcw, Target, TrendingDown, XCircle } from "lucide-react";
+import { AlertTriangle, Bell, Compass, Mail, MessageCircle, PlusCircle, RotateCcw, Target, TrendingDown, XCircle, Zap } from "lucide-react";
 import { MarkSeen } from "@/components/personal/mark-seen";
 import { brl, pctBp } from "@/domain/money";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ const ICON: Record<NotificationKind, { icon: typeof Bell; className: string }> =
   baixa_preco: { icon: TrendingDown, className: "bg-emerald-50 text-emerald-700" },
   preco_alvo: { icon: Target, className: "bg-amber-50 text-amber-700" },
   perfil: { icon: Compass, className: "bg-teal-50 text-teal-700" },
+  carregador: { icon: Zap, className: "bg-amber-100 text-amber-800" },
   indisponivel: { icon: XCircle, className: "bg-zinc-100 text-zinc-600" },
   voltou: { icon: RotateCcw, className: "bg-sky-50 text-sky-700" },
   fonte_falhou: { icon: AlertTriangle, className: "bg-red-50 text-red-700" },

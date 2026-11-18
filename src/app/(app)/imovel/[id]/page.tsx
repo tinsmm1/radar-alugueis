@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, FlaskConical, MapPin, Copy } from "lucide-react";
-import { CostStatusBadge, DemoBadge, DropBadge, OpportunityBadges, PrecisionBadge, RiskBadge } from "@/components/property/badges";
+import { EvChargerBadge, CostStatusBadge, DemoBadge, DropBadge, OpportunityBadges, PrecisionBadge, RiskBadge } from "@/components/property/badges";
 import { CompareButton } from "@/components/property/compare-button";
 import { FavoriteButton } from "@/components/property/favorite-button";
 import { CostBreakdown } from "@/components/detail/cost-breakdown";
@@ -19,9 +19,9 @@ import { STATUS_LABEL, type ListingStatus } from "@/domain/lifecycle";
 import { lists } from "@/server/favorites";
 import { getPropertyDetail } from "@/server/queries/property";
 import { isAuthenticated, requireAuth } from "@/auth/session";
-import { FinancingSimulator } from "@/components/detail/financing-simulator";
 import { PurchasePanel, type RentEstimate } from "@/components/detail/purchase-panel";
 import { currentMode } from "@/server/mode";
+import { EvChargerPanel } from "@/components/detail/ev-charger-panel";
 import { EvaluationPanel } from "@/components/detail/evaluation-panel";
 import { PriceWatch } from "@/components/detail/price-watch";
 import { RelatedLinks } from "@/components/detail/related-links";
@@ -103,6 +103,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-1.5">
           {p.isDemo && <DemoBadge />}
+          <EvChargerBadge features={p.features} long className="px-2.5 py-1 text-sm" />
           <GradeBadge score={buy ? p.saleEvalScore : p.rentEvalScore} long />
           <RiskBadge level={p.riskLevel} score={p.riskScore} />
           <DropBadge dropBp={buy ? p.saleDropBp : p.dropBp} />
@@ -126,7 +127,20 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-5">
-          <Gallery photos={photos} title={title} />
+          <div className="grid gap-4 md:grid-cols-2">
+            <Gallery photos={photos} title={title} />
+            <div id="mapa" className="space-y-2">
+              {p.lat != null && p.lng != null ? (
+                <>
+                  <MiniMap lat={p.lat} lng={p.lng} approximate={approximate} />
+                  <p className="text-xs text-muted-foreground">{approximate ? "Círculo: localização aproximada (centro do bairro ou endereço oculto pela fonte)." : "Posição do endereço informado."}</p>
+                </>
+              ) : (
+                <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">Ainda sem localização no mapa: o endereço será localizado na próxima coleta.</p>
+              )}
+            </div>
+          </div>
+          <EvChargerPanel features={p.features} type={p.type} parking={p.parking} />
           <Section id="avaliacao" title={`Avaliação do Radar · ${buy ? "compra" : "aluguel"}`}>
             <EvaluationPanel evaluation={evaluation} mode={mode} />
           </Section>
@@ -146,11 +160,6 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
                   <p key={i} className="text-sm leading-relaxed whitespace-pre-line text-foreground/90">{t}</p>
                 ))}
               </div>
-            </Section>
-          )}
-          {buy && p.salePriceCents != null && (
-            <Section id="simulacao" title="Simulação de compra">
-              <FinancingSimulator priceCents={p.salePriceCents} condoCents={p.condoCents} iptuMonthlyCents={p.iptuMonthlyCents} estRentCents={p.estRentCents} />
             </Section>
           )}
           <Section id="analise" title="Análise da localização">
@@ -215,14 +224,6 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
             <PriceWatch propertyId={p.id} mode={mode} currentCents={buy ? p.salePriceCents : (p.totalCents ?? p.rentCents)} watch={watches.find((w) => w.mode === mode) ?? null} suggestedCents={watchTarget} />
           )}
           <RelatedLinks p={p} mode={mode} />
-          {p.lat != null && p.lng != null ? (
-            <div className="space-y-2">
-              <MiniMap lat={p.lat} lng={p.lng} approximate={approximate} />
-              <p className="text-xs text-muted-foreground">{approximate ? "Círculo: localização aproximada (centro do bairro ou endereço oculto pela fonte)." : "Posição do endereço informado."}</p>
-            </div>
-          ) : (
-            <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">Ainda sem localização no mapa: o endereço será geocodificado na próxima coleta.</p>
-          )}
         </aside>
       </div>
     </div>

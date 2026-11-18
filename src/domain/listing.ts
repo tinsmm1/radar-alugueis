@@ -17,12 +17,14 @@ export const TYPE_LABEL: Record<PropertyType, string> = {
 
 /** The 18 special features of the product, in display order. */
 export const FEATURES = [
-  "cobertura", "area_privativa", "varanda", "sacada", "elevador", "piscina", "academia", "portaria_24h", "condominio_fechado",
+  "carregador_eletrico", "preparo_carregador", "cobertura", "area_privativa", "varanda", "sacada", "elevador", "piscina", "academia", "portaria_24h", "condominio_fechado",
   "mobiliado", "ar_condicionado", "aceita_animais", "suite", "closet", "churrasqueira", "lavanderia", "gas_canalizado", "agua_individual",
 ] as const;
 export type Feature = (typeof FEATURES)[number];
 
 export const FEATURE_LABEL: Record<Feature, string> = {
+  carregador_eletrico: "Carregador de carro elétrico",
+  preparo_carregador: "Preparado para carregador elétrico",
   cobertura: "Cobertura",
   area_privativa: "Área privativa",
   varanda: "Varanda",
@@ -48,6 +50,11 @@ export const FEATURE_LABEL: Record<Feature, string> = {
  * Matched on normalized text with word boundaries; negations are handled in detectFeatures.
  */
 const FEATURE_PATTERNS: Record<Feature, RegExp> = {
+  // EV charging (owner priority): an installed charger or a stated infrastructure for one.
+  carregador_eletrico:
+    /\b(carregadore?s? (de |para )?(carros?|veiculos?) eletricos?|carregadore?s? eletricos?|carregadore?s? veicular(es)?|wall ?box|pontos? de recarga|estac(ao|oes) de recarga|recarga (de |para )?(carros?|veiculos?) eletricos?|tomada (de |para )?(carros?|veiculos?) eletricos?|electric (car|vehicle) charg\w*|ev charg\w*|charging station|car charger)\b/,
+  preparo_carregador:
+    /\b(preparad[oa]s? para (carregador|carros? eletricos?|veiculos? eletricos?|recarga)|infra ?estrutura (para|de) (carregador|carros? eletricos?|veiculos? eletricos?|recarga)|previsao (para|de) carregador|tubulacao (para|de) carregador|ponto (para|de) carregador|possibilidade de (instalar|instalacao de) carregador|pronto para (carros?|veiculos?) eletricos?)\b/,
   cobertura: /\b(cobertura|penthouse)\b/,
   area_privativa: /\b(area privativa|private area|garden)\b/,
   varanda: /\b(varanda|balcony|varanda gourmet)\b/,

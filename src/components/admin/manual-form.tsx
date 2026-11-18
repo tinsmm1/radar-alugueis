@@ -9,6 +9,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FEATURE_LABEL, FEATURES, PROPERTY_TYPES, TYPE_LABEL } from "@/domain/listing";
+import { groupDigits } from "@/domain/money";
+
+/** Formats a money or area field while typing (200000 → 200.000). */
+const fmtMoney = (e: React.FormEvent<HTMLInputElement>) => {
+  e.currentTarget.value = groupDigits(e.currentTarget.value);
+};
 import { addManualListing } from "@/server/actions/admin";
 
 const select = "h-9 w-full rounded-lg border border-input bg-background px-2.5 text-sm shadow-xs outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
@@ -70,16 +76,16 @@ export function ManualForm() {
           <option value="ambos">Aluguel e venda</option>
         </select>
       </Field>
-      <Field id="m-rent" label="Aluguel (R$/mês)"><Input id="m-rent" name="rent" inputMode="decimal" placeholder="2.500" /></Field>
-      <Field id="m-sale" label="Preço de venda (R$)"><Input id="m-sale" name="salePrice" inputMode="decimal" placeholder="450.000" /></Field>
-      <Field id="m-condo" label="Condomínio (R$)"><Input id="m-condo" name="condo" inputMode="decimal" placeholder="em branco = não informado" /></Field>
+      <Field id="m-rent" label="Aluguel (R$/mês)"><Input id="m-rent" name="rent" inputMode="decimal" onInput={fmtMoney} placeholder="2.500" /></Field>
+      <Field id="m-sale" label="Preço de venda (R$)"><Input id="m-sale" name="salePrice" inputMode="decimal" onInput={fmtMoney} placeholder="450.000" /></Field>
+      <Field id="m-condo" label="Condomínio (R$)"><Input id="m-condo" name="condo" inputMode="decimal" onInput={fmtMoney} placeholder="em branco = não informado" /></Field>
       <div className="grid grid-cols-[1fr_auto] gap-2">
-        <Field id="m-iptu" label="IPTU (R$)"><Input id="m-iptu" name="iptu" inputMode="decimal" placeholder="não informado" /></Field>
+        <Field id="m-iptu" label="IPTU (R$)"><Input id="m-iptu" name="iptu" inputMode="decimal" onInput={fmtMoney} placeholder="não informado" /></Field>
         <Field id="m-iptu-p" label="Período">
           <select id="m-iptu-p" name="iptuPeriod" className={select} defaultValue="anual"><option value="anual">por ano</option><option value="mensal">por mês</option></select>
         </Field>
       </div>
-      <Field id="m-area" label="Área privativa (m²)"><Input id="m-area" name="area" inputMode="decimal" /></Field>
+      <Field id="m-area" label="Área privativa (m²)"><Input id="m-area" name="area" inputMode="decimal" onInput={fmtMoney} /></Field>
       <Field id="m-bed" label="Quartos"><Input id="m-bed" name="bedrooms" inputMode="numeric" /></Field>
       <Field id="m-suites" label="Suítes"><Input id="m-suites" name="suites" inputMode="numeric" /></Field>
       <Field id="m-bath" label="Banheiros"><Input id="m-bath" name="bathrooms" inputMode="numeric" /></Field>

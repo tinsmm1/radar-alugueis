@@ -50,3 +50,29 @@ export async function profileMatches(): Promise<number> {
   }
   return created;
 }
+
+/**
+ * EV charging is the owner's top priority and rare in listings: every real, active property that
+ * states a charger (or prepared infrastructure) is notified once, in each mode it is offered.
+ */
+export async function evChargerMatches(): Promise<number> {
+  const db = getDb();
+  let created = 0;
+  for (const mode of ["aluguel", "compra"] as const) {
+    const { rows } = await db.execute<{ id: number }>(sql`
+      select p.id from properties p
+      where p.status = 'ativo' and not p.is_demo and ${mode === "compra" ? sql`p.for_sale` : sql`p.for_rent`}
+        and p.features && array['carregador_eletrico','preparo_carregador']::text[]
+        and not exists (select 1 from notifications n where n.dedup_key = 'carregador:' || ${mode} || ':' || p.id)
+      order by p.first_seen_at desc
+      limit ${MAX_PER_RUN}`);
+    if (!rows.length) continue;
+    const inserted = await db
+      .insert(notifications)
+      .values(rows.map((r) => ({ kind: "carregador", propertyId: r.id, dedupKey: `carregador:${mode}:${r.id}`, payload: { mode } })))
+      .onConflictDoNothing()
+      .returning({ id: notifications.id });
+    created += inserted.length;
+  }
+  return created;
+}

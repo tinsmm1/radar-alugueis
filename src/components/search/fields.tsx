@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { groupDigits, parseBrNumber } from "@/domain/money";
 
 /** Collapsible filter group with a count of active criteria. */
 export function Section({ title, icon, active = 0, defaultOpen = true, children }: { title: string; icon?: ReactNode; active?: number; defaultOpen?: boolean; children: ReactNode }) {
@@ -67,7 +68,7 @@ export function ChoiceChips<T extends string | number>({ value, options, onChang
 /** "2.500" → 2500; with a decimal step (e.g. a yield of "5,5"), keeps one decimal. */
 function parseNum(raw: string, step?: number): number | undefined {
   const decimal = step != null && step < 1;
-  const n = Number((decimal ? raw : raw.replace(/\./g, "")).replace(",", "."));
+  const n = parseBrNumber(raw) ?? Number.NaN;
   if (raw.trim() === "" || !Number.isFinite(n) || n < 0) return undefined;
   return decimal ? Math.round(n * 10) / 10 : Math.round(n);
 }
@@ -84,7 +85,10 @@ export function RangeInput({ min, max, onChange, prefix, suffix, step, idPrefix,
   };
   const props = (which: "min" | "max", value?: number) => ({
     id: `${idPrefix}-${which}`,
-    defaultValue: value ?? "",
+    defaultValue: value == null ? "" : groupDigits(String(value).replace(".", ",")),
+    onInput: (e: React.FormEvent<HTMLInputElement>) => {
+      e.currentTarget.value = groupDigits(e.currentTarget.value);
+    },
     inputMode: (step != null && step < 1 ? "decimal" : "numeric") as "decimal" | "numeric",
     step,
     placeholder: which === "min" ? "Mín." : "Máx.",

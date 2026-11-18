@@ -18,7 +18,7 @@ function counts(f: Filter) {
     loc: n(f.bairros, f.regionais, f.perto, f.bbox),
     fis: n(f.tipos, f.areaMin, f.areaMax, f.quartosMin, f.quartosMax, f.suitesMin, f.banheirosMin, f.vagasMin),
     car: f.caracteristicas.length,
-    add: n(f.recentesDias, f.atualizadosDias, f.reducao, f.anunciante, f.localizacao, f.riscoMax, f.notaMin, f.deslocamentoMax, f.semInundacao, f.oportunidades, f.favoritos, f.incluirIndisponiveis, f.fontes),
+    add: n(f.recentesDias, f.atualizadosDias, f.reducao, f.anunciante, f.localizacao, f.riscoMax, f.notaMin, f.deslocamentoMax, f.semInundacao, f.oportunidades, f.carregador, f.favoritos, f.incluirIndisponiveis, f.fontes),
   };
 }
 
@@ -136,6 +136,7 @@ export function FilterPanel({ facets, inSheet }: { facets: Facets; inSheet?: boo
         </Field>
         <SwitchRow id="sem-inundacao" label="Fora de suscetibilidade a inundação" hint="Segundo a carta do SGB/IPT. Só imóveis já analisados." checked={f.semInundacao} onChange={(v) => update({ semInundacao: v })} />
         <SwitchRow id="reducao" label="Com redução de preço" hint="Reduções nos últimos 60 dias." checked={f.reducao} onChange={(v) => update({ reducao: v })} />
+        <SwitchRow id="carregador" label="⚡ Com carregador de carro elétrico" hint="Carregador instalado ou preparo informado no anúncio (poucos anúncios trazem isso)." checked={f.carregador} onChange={(v) => update({ carregador: v })} />
         <SwitchRow id="oportunidades" label="Só oportunidades" hint="Redução, abaixo dos comparáveis ou recém-publicado." checked={f.oportunidades} onChange={(v) => update({ oportunidades: v })} />
         <SwitchRow id="favoritos" label="Só favoritos" checked={f.favoritos} onChange={(v) => update({ favoritos: v })} />
         <SwitchRow id="indisponiveis" label="Incluir indisponíveis" hint="Anúncios que saíram das fontes." checked={f.incluirIndisponiveis} onChange={(v) => update({ incluirIndisponiveis: v })} />

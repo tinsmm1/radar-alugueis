@@ -65,6 +65,7 @@ export function whereFor(f: Filter, opts: { ignoreBbox?: boolean; ids?: number[]
   if (f.semInundacao) c.push(sql`${p.analyzedAt} is not null and coalesce(${p.floodLevel}, 0) = 0`);
   if (f.notaMin) c.push(gte(buy ? p.saleEvalScore : p.rentEvalScore, GRADE_MIN[f.notaMin]));
   if (f.deslocamentoMax != null) c.push(sql`${p.commuteMinutes} <= ${f.deslocamentoMax}`);
+  if (f.carregador) c.push(sql`${p.features} && array['carregador_eletrico','preparo_carregador']::text[]`);
   if (f.oportunidades) c.push(buy ? sql`${p.saleOpportunityScore} > 0` : sql`${p.opportunityScore} > 0`);
   if (f.favoritos) c.push(sql`exists (select 1 from favorites fv where fv.property_id = ${p.id})`);
   if (f.fontes.length) c.push(arrayOverlaps(p.sourceKeys, f.fontes));
@@ -89,7 +90,8 @@ function orderFor(f: Filter): SQL[] {
     case "melhor_avaliacao": return [nulls(buy ? p.saleEvalScore : p.rentEvalScore, "desc"), desc(opp), asc(p.id)];
     case "menor_deslocamento": return [nulls(p.commuteMinutes), nulls(buy ? p.saleEvalScore : p.rentEvalScore, "desc"), asc(p.id)];
     case "oportunidade": return [desc(opp), nulls(buy ? p.salePriceM2Cents : p.costPerM2Cents), asc(p.id)];
-    default: return [sql`(${p.status} = 'ativo') desc`, desc(opp), desc(p.firstSeenAt), asc(p.id)];
+    // Relevance: listings that state EV charging come first (owner priority), then opportunities.
+    default: return [sql`(${p.status} = 'ativo') desc`, sql`(${p.features} && array['carregador_eletrico','preparo_carregador']::text[]) desc`, desc(opp), desc(p.firstSeenAt), asc(p.id)];
   }
 }
 

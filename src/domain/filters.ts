@@ -79,6 +79,8 @@ export const filterSchema = z.object({
   deslocamentoMax: z.int().min(5).max(180).optional(),
   semInundacao: z.boolean().default(false),
   oportunidades: z.boolean().default(false),
+  /** EV charging stated in the listing (installed charger or prepared infrastructure). */
+  carregador: z.boolean().default(false),
   incluirIndisponiveis: z.boolean().default(false),
   favoritos: z.boolean().default(false),
   fontes: z.array(z.string().max(60)).max(20).default([]),
@@ -93,7 +95,7 @@ const NUMBERS = [
   "quartosMin", "quartosMax", "suitesMin", "banheirosMin", "vagasMin", "recentesDias", "atualizadosDias", "raioKm",
   "precoMin", "precoMax", "precoM2Max", "rendimentoMin", "deslocamentoMax",
 ] as const;
-const FLAGS = ["reducao", "custoCompleto", "semInundacao", "oportunidades", "incluirIndisponiveis", "favoritos"] as const;
+const FLAGS = ["reducao", "custoCompleto", "semInundacao", "oportunidades", "carregador", "incluirIndisponiveis", "favoritos"] as const;
 const STRINGS = ["modo", "q", "perto", "pertoNome", "bbox", "anunciante", "localizacao", "riscoMax", "notaMin", "ordem"] as const;
 
 type Params = { get(name: string): string | null; getAll(name: string): string[] };
@@ -187,6 +189,7 @@ export function describeFilter(f: Filter): string {
     f.deslocamentoMax != null && `até ${f.deslocamentoMax} min do trabalho`,
     f.semInundacao && "fora de suscetibilidade a inundação",
     f.oportunidades && "oportunidades",
+    f.carregador && "carregador de carro elétrico",
     f.favoritos && "favoritos",
   ].filter(Boolean);
   return parts.length > 1 ? parts.join(" · ") : `${parts[0]}: todos os imóveis`;

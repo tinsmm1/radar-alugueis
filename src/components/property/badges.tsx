@@ -1,4 +1,4 @@
-import { Award, CircleAlert, FlaskConical, MapPin, Sparkles, TrendingDown } from "lucide-react";
+import { Award, CircleAlert, FlaskConical, MapPin, Sparkles, TrendingDown, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { COST_STATUS_LABEL, type CostStatus } from "@/domain/cost";
@@ -118,5 +118,18 @@ export function GradeBadge({ score, className, long }: { score: number | null | 
       {long ? `Avaliação ${g} · ${GRADE_LABEL[g]}` : g}
       <span className="font-normal opacity-80">· {score}</span>
     </span>
+  );
+}
+
+/** EV charging (owner priority): installed charger or prepared infrastructure, as stated by the listing. */
+export function EvChargerBadge({ features, long, className }: { features: readonly string[]; long?: boolean; className?: string }) {
+  const charger = features.includes("carregador_eletrico");
+  const prepared = !charger && features.includes("preparo_carregador");
+  if (!charger && !prepared) return null;
+  return (
+    <Badge className={cn("gap-1 border-0 bg-amber-400 font-semibold text-amber-950 ring-2 ring-amber-500/60 shadow-sm", className)} title="Informado no anúncio: confirme com o anunciante">
+      <Zap className="size-3.5 fill-current" />
+      {charger ? (long ? "Carregador de carro elétrico" : "Carregador elétrico") : long ? "Preparado para carregador elétrico" : "Preparo p/ carregador"}
+    </Badge>
   );
 }

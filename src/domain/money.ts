@@ -69,3 +69,20 @@ export function parseCount(input: unknown): number | null {
   const raw = typeof input === "number" ? input : typeof input === "string" ? Number((/\d+/.exec(input) ?? [""])[0] || NaN) : NaN;
   return Number.isInteger(raw) && raw >= 0 && raw <= 50 ? raw : null;
 }
+
+/** While typing: "200000" → "200.000", "1234,5" → "1.234,5" (pt-BR digit grouping). */
+export function groupDigits(raw: string): string {
+  const clean = raw.replace(/[^\d,]/g, "");
+  if (!clean) return "";
+  const [int = "", ...rest] = clean.split(",");
+  const grouped = int.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return rest.length ? `${grouped || "0"},${rest.join("").slice(0, 2)}` : grouped;
+}
+
+/** "200.000" / "1.234,56" / "2500" → number; empty or unreadable → null. */
+export function parseBrNumber(raw: string): number | null {
+  const t = raw.trim().replace(/\./g, "").replace(",", ".");
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
