@@ -105,8 +105,11 @@ export const cardColumns = {
   forRent: p.forRent, forSale: p.forSale, salePriceCents: p.salePriceCents, salePriceM2Cents: p.salePriceM2Cents, saleDropBp: p.saleDropBp, saleDroppedAt: p.saleDroppedAt,
   estRentCents: p.estRentCents, grossYieldBp: p.grossYieldBp, saleOpportunity: p.saleOpportunity, saleOpportunityScore: p.saleOpportunityScore,
   rentEvalScore: p.rentEvalScore, saleEvalScore: p.saleEvalScore,
+  /** Up to 12 photos of the listing with the most photos (card carousel). */
+  photos: sql<string[] | null>`(select l.photos[1:12] from listings l where l.property_id = ${p.id} and cardinality(l.photos) > 0 order by cardinality(l.photos) desc limit 1)`,
 };
-export type PropertyCard = { [K in keyof typeof cardColumns]: (typeof cardColumns)[K]["_"]["data"] | null } & { id: number; features: string[]; sourceKeys: string[] };
+type CardColumn = Exclude<keyof typeof cardColumns, "photos">;
+export type PropertyCard = { [K in CardColumn]: (typeof cardColumns)[K]["_"]["data"] | null } & { id: number; features: string[]; sourceKeys: string[]; photos: string[] | null };
 
 export const PAGE_SIZE = 24;
 

@@ -6,9 +6,11 @@ import { maxPriceFor } from "@/domain/affordability";
 import { locatedWorkplaces, rentBudgetCents } from "@/domain/profile";
 import { loadProfile } from "../profile";
 
-const MIN_SCORE = { A: 80, B: 65 } as const;
-/** Per run and mode, so turning alerts on never floods the inbox. */
-const MAX_PER_RUN = 10;
+const MIN_SCORE = { A: 80, B: 70 } as const;
+/** Per run and mode: only the very best few, so the inbox stays relevant. */
+const MAX_PER_RUN = 3;
+/** Never more "perfil" alerts than this in 24 h (both modes together). */
+const MAX_PER_DAY = 5;
 
 /**
  * "Oportunidade para o seu perfil": an active, real offer that reaches the owner's grade, fits
@@ -23,10 +25,14 @@ export async function profileMatches(): Promise<number> {
   const maxRent = rentBudgetCents(profile);
   if (!profile.alerts || (!hasWork && maxBuy == null)) return 0;
   const db = getDb();
+  const [{ n: today } = { n: 0 }] = (await db.execute<{ n: number }>(sql`select count(*)::int as n from notifications where kind = 'perfil' and created_at > now() - interval '24 hours'`)).rows;
+  let room = MAX_PER_DAY - Number(today);
   let created = 0;
   for (const mode of ["aluguel", "compra"] as const) {
+    if (room <= 0) break;
     const buy = mode === "compra";
     const score = buy ? sql`p.sale_eval_score` : sql`p.rent_eval_score`;
+    const evalJson = buy ? sql`p.sale_eval` : sql`p.rent_eval`;
     const price = buy ? sql`p.sale_price_cents` : sql`coalesce(p.total_cents, p.rent_cents)`;
     const budget = buy ? maxBuy : maxRent;
     const { rows } = await db.execute<{ id: number; score: number; commute: number | null; price: number | null }>(sql`
@@ -34,12 +40,19 @@ export async function profileMatches(): Promise<number> {
       from properties p
       where p.status = 'ativo' and not p.is_demo and ${buy ? sql`p.for_sale` : sql`p.for_rent`}
         and ${score} >= ${MIN_SCORE[profile.alertGrade]}
-        and p.first_seen_at >= now() - interval '7 days'
+        and p.first_seen_at >= now() - interval '3 days'
+        -- Relevance: a reliable grade (confidence not low), an exact address and photos.
+        and coalesce(${evalJson}->>'confidence', 'baixa') <> 'baixa'
+        and (${evalJson}->>'confidence' = 'alta' or ${score} >= 80)
+        and p.geo_precision = 'exata'
+        and p.photo is not null
+        -- Price far below the comparables is a warning sign (error, condition, scam), not news.
+        and not exists (select 1 from jsonb_array_elements_text(coalesce(${evalJson}->'cons', '[]'::jsonb)) c where c ilike '%desconfi%' or c ilike '%golpe%' or c ilike '%bom demais%')
         ${hasWork ? sql`and p.commute_minutes is not null and p.commute_minutes <= ${profile.maxCommuteMin}` : sql``}
         ${budget != null ? sql`and ${price} is not null and ${price} <= ${budget}` : sql``}
         and not exists (select 1 from notifications n where n.dedup_key = 'perfil:' || ${mode} || ':' || p.id)
-      order by ${score} desc
-      limit ${MAX_PER_RUN}`);
+      order by (p.features && array['carregador_eletrico','preparo_carregador']::text[]) desc, ${score} desc, p.commute_minutes asc nulls last
+      limit ${Math.min(MAX_PER_RUN, room)}`);
     if (!rows.length) continue;
     const inserted = await db
       .insert(notifications)
@@ -47,6 +60,7 @@ export async function profileMatches(): Promise<number> {
       .onConflictDoNothing()
       .returning({ id: notifications.id });
     created += inserted.length;
+    room -= inserted.length;
   }
   return created;
 }

@@ -4,6 +4,7 @@ import { FilterPanel } from "@/components/search/filter-panel";
 import { SearchBox } from "@/components/search/search-box";
 import { StatsBar } from "@/components/search/stats-bar";
 import { Toolbar } from "@/components/search/toolbar";
+import { FilterMemory } from "@/components/search/filter-memory";
 import { Workspace } from "@/components/search/workspace";
 import { filterFromParams } from "@/domain/filters";
 import { updateInfo } from "@/server/dashboard";
@@ -86,7 +87,10 @@ export default async function SearchPage({ searchParams }: PageProps<"/">) {
             </Link>
           </div>
         ) : (
-          <Workspace items={items} favorites={[...fav]} total={stats.total} pages={pages} />
+          <>
+            <FilterMemory />
+            <Workspace items={items} favorites={[...fav]} total={stats.total} pages={pages} />
+          </>
         )}
       </div>
     </div>

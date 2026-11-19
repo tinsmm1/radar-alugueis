@@ -22,6 +22,18 @@ export function Workspace({ items, favorites, total, pages }: Props) {
   const [selected, setSelected] = useState<number | null>(null);
   const [hovered, setHovered] = useState<number | null>(null);
   const [focusKey, setFocusKey] = useState(0);
+  const [focused, setFocused] = useState<number | null>(null);
+  // "Locate" toggles: first click flies to the property, second click returns to the previous view.
+  const locate = (id: number) => {
+    if (focused === id) {
+      setFocused(null);
+      setSelected(null);
+      return;
+    }
+    setFocused(id);
+    setSelected(id);
+    setFocusKey((k) => k + 1);
+  };
   const fav = useMemo(() => new Set(favorites), [favorites]);
   const cards = useMemo<Record<number, MiniCard>>(
     () => Object.fromEntries(items.map((p) => [p.id, { title: p.title?.replace(/^\[DEMONSTRAÇÃO\]\s*/, "") ?? "Imóvel", neighborhood: p.neighborhood, photo: p.photo }])),
@@ -45,6 +57,7 @@ export function Workspace({ items, favorites, total, pages }: Props) {
       selectedId={selected}
       hoveredId={hovered}
       focusKey={focusKey}
+      focusId={focused}
       onSelect={setSelected}
       cards={cards}
       bbox={filter.bbox}
@@ -79,10 +92,11 @@ export function Workspace({ items, favorites, total, pages }: Props) {
                   type="button"
                   size="icon-sm"
                   variant="outline"
-                  className="absolute top-11 right-2 z-20 hidden rounded-full bg-white/95 shadow-sm lg:inline-flex"
-                  aria-label="Ver no mapa"
-                  title="Ver no mapa"
-                  onClick={() => (setSelected(p.id), setFocusKey((k) => k + 1))}
+                  className={cn("absolute top-11 right-2 z-20 hidden rounded-full bg-white/95 shadow-sm lg:inline-flex", focused === p.id && "border-primary bg-primary text-primary-foreground hover:bg-primary/90")}
+                  aria-label={focused === p.id ? "Voltar ao mapa anterior" : "Ver no mapa"}
+                  aria-pressed={focused === p.id}
+                  title={focused === p.id ? "Voltar ao mapa como estava" : "Ver no mapa"}
+                  onClick={() => locate(p.id)}
                 >
                   <Crosshair />
                 </Button>

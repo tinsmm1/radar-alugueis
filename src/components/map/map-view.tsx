@@ -14,6 +14,8 @@ export type MapViewProps = {
   hoveredId: number | null;
   /** Changes when the list asks the map to fly to the selected property. */
   focusKey: number;
+  /** Property the list "located" on the map; back to null restores the previous view. */
+  focusId?: number | null;
   onSelect: (id: number | null) => void;
   cards: Record<number, MiniCard>;
   overlays: OverlayKey[];
@@ -61,10 +63,10 @@ function addPropertyLayers(map: MapLibreMap) {
 }
 
 type Lib = Awaited<ReturnType<typeof loadMaplibre>>;
-type Hooks = { latest: { current: MapViewProps }; onReady: () => void; onError: (msg: string) => void };
+type Hooks = { latest: { current: MapViewProps }; silent: { current: boolean }; onReady: () => void; onError: (msg: string) => void };
 
 /** Creates the map, its property layers and the click/hover handlers (handlers read `latest`). */
-function createMap(lib: Lib, container: HTMLDivElement, { latest, onReady, onError }: Hooks): MapLibreMap {
+function createMap(lib: Lib, container: HTMLDivElement, { latest, silent, onReady, onError }: Hooks): MapLibreMap {
   const map = new lib.Map({ container, style: STYLE, center: [BH_CENTER.lng, BH_CENTER.lat], zoom: 11.2, minZoom: 9, maxZoom: 18, attributionControl: { compact: true }, cooperativeGestures: false });
   map.addControl(new lib.NavigationControl({ showCompass: false }), "bottom-right");
   map.on("load", () => {
@@ -100,7 +102,8 @@ function createMap(lib: Lib, container: HTMLDivElement, { latest, onReady, onErr
       if (name) latest.current.onToggleRegional(name);
     });
     map.on("moveend", () => {
-      if (!latest.current.bboxActive) return;
+      // Moves made by "locate" (and its undo) never change the "search this area" filter.
+      if (!latest.current.bboxActive || silent.current) return;
       const b = map.getBounds();
       latest.current.onBbox([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map((n) => n.toFixed(4)).join(","));
     });
@@ -118,6 +121,8 @@ export default function MapView(props: MapViewProps) {
   const mapRef = useRef<MapLibreMap | null>(null);
   const popupRef = useRef<Popup | null>(null);
   const latest = useRef(props);
+  const silent = useRef(false);
+  const savedView = useRef<{ center: [number, number]; zoom: number } | null>(null);
   const points = useRef<Map<number, MapPoint>>(new Map());
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -133,7 +138,7 @@ export default function MapView(props: MapViewProps) {
     void loadMaplibre().then((lib) => {
       if (disposed || !el.current) return;
       ml.current = lib;
-      created = createMap(lib, el.current, { latest, onReady: () => setReady(true), onError: setError });
+      created = createMap(lib, el.current, { latest, silent, onReady: () => setReady(true), onError: setError });
       mapRef.current = created;
     }).catch(() => setError("Não foi possível carregar o mapa."));
     return () => {
@@ -186,11 +191,26 @@ export default function MapView(props: MapViewProps) {
     popupRef.current = popup;
   }, [ready, props.selectedId]);
 
+  // "Locate": remember the view, fly to the property; undo flies back to the remembered view.
   useEffect(() => {
     const map = mapRef.current;
-    const p = props.selectedId != null ? points.current.get(props.selectedId) : null;
-    if (ready && map && p && props.focusKey > 0) map.flyTo({ center: [p.lng, p.lat], zoom: Math.max(map.getZoom(), 15), duration: 700 });
-  }, [ready, props.focusKey, props.selectedId]);
+    if (!ready || !map) return;
+    const quietly = (to: { center: [number, number]; zoom: number }) => {
+      silent.current = true;
+      map.once("moveend", () => {
+        silent.current = false;
+      });
+      map.flyTo({ ...to, duration: 700 });
+    };
+    const p = props.focusId != null ? points.current.get(props.focusId) : null;
+    if (p && props.focusKey > 0) {
+      if (!savedView.current) savedView.current = { center: map.getCenter().toArray() as [number, number], zoom: map.getZoom() };
+      quietly({ center: [p.lng, p.lat], zoom: Math.max(map.getZoom(), 15) });
+    } else if (props.focusId == null && savedView.current) {
+      quietly(savedView.current);
+      savedView.current = null;
+    }
+  }, [ready, props.focusKey, props.focusId]);
 
   // Overlays on/off.
   const overlayKey = props.overlays.join(",");

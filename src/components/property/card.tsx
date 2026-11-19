@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Bath, BedDouble, Briefcase, Car, Clock, Home, Ruler } from "lucide-react";
+import { Bath, BedDouble, Briefcase, Car, Clock, Ruler } from "lucide-react";
 import { FEATURE_LABEL, TYPE_LABEL, type Feature, type Mode, type PropertyType } from "@/domain/listing";
 import { brl, m2, pctBp } from "@/domain/money";
 import { STATUS_LABEL, type ListingStatus } from "@/domain/lifecycle";
 import type { PropertyCard } from "@/server/search";
 import { cn } from "@/lib/utils";
 import { EvChargerBadge, GradeBadge, CostStatusBadge, DemoBadge, DropBadge, OpportunityBadges, PrecisionBadge, RiskBadge, SourceBadges } from "./badges";
+import { CardPhotos } from "./card-photos";
 import { CompareButton } from "./compare-button";
 import { FavoriteButton } from "./favorite-button";
 
@@ -19,18 +20,7 @@ export function relativeTime(d: Date | string | null): string {
   return days === 1 ? "ontem" : `há ${days} dias`;
 }
 
-export function Photo({ src, alt, className }: { src: string | null; alt: string; className?: string }) {
-  if (!src) {
-    return (
-      <div className={cn("flex items-center justify-center bg-gradient-to-br from-accent to-muted text-primary/40", className)} aria-hidden>
-        <Home className="size-10" />
-      </div>
-    );
-  }
-  // Listing photos come from the advertisers' own hosts (any domain), so next/image is not used.
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt={alt} loading="lazy" decoding="async" referrerPolicy="no-referrer" className={cn("object-cover", className)} />;
-}
+export { Photo } from "./photo";
 
 /**
  * Property card: photo, title, neighbourhood, rent, condo, IPTU, known monthly total, area,
@@ -47,7 +37,7 @@ export function PropertyCardView({ p, favorite, selected, compact, mode: wanted 
     <article className={cn("group relative overflow-hidden rounded-xl border bg-card shadow-xs transition-all hover:-translate-y-px hover:shadow-md", selected && "border-primary ring-2 ring-primary/30", unavailable && "opacity-75")}>
       <Link href={`/imovel/${p.id}?modo=${mode}`} className="absolute inset-0 z-10" aria-label={`${title}, ${p.neighborhood ?? ""}`} />
       <div className={cn("relative", compact ? "aspect-[16/9]" : "aspect-[16/10]")}>
-        <Photo src={p.photo} alt={title} className="size-full" />
+        <CardPhotos photos={p.photos} fallback={p.photo} alt={title} className="size-full" />
         <div className="absolute top-2 right-20 left-2 flex flex-wrap gap-1">
           {p.isDemo && <DemoBadge className="bg-white/95" />}
           <DropBadge dropBp={buy ? p.saleDropBp : p.dropBp} className="bg-white/95" />
